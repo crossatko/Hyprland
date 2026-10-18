@@ -1,4 +1,5 @@
 #include "Kawase.hpp"
+#include "BlurTiming.hpp"
 
 #include "../../OpenGL.hpp"
 #include "../../Renderer.hpp"
@@ -103,7 +104,14 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
     if (!PPREPAREDFB)
         return nullptr;
 
-    auto currentRenderToFB = PMIRRORFB;
+    auto        currentRenderToFB = PMIRRORFB;
+
+    std::string timingLabel;
+    if (BlurTiming::enabled()) {
+        const auto BOX = context.shape ? context.shape->box : CBox{};
+        timingLabel    = std::format("type {} {}x{}", sc<int>(m_material->type()), sc<int>(BOX.width), sc<int>(BOX.height));
+        BlurTiming::begin(timingLabel + " passes");
+    }
 
     // Begin with base color adjustments - global brightness and contrast
     // TODO: make this a part of the first pass maybe to save on a drawcall?
@@ -220,6 +228,8 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
         drawPass(shader, SH_FRAG_BLUR2, &tempDamage);
     }
 
+    BlurTiming::end();
+
     {
         static auto PBLURNOISE      = CConfigValue<Config::FLOAT>("decoration:blur:noise");
         static auto PBLURBRIGHTNESS = CConfigValue<Config::FLOAT>("decoration:blur:brightness");
@@ -271,6 +281,9 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
             shader->setUniformInt(SHADER_SHARP_TEX, 1);
         m_material->bindFinish(ctx, shader, materialContext);
 
+        if (BlurTiming::enabled())
+            BlurTiming::begin(timingLabel + " finish");
+
         glBindVertexArray(shader->getUniformLocation(SHADER_SHADER_VAO));
 
         if (!outputDamage.empty()) {
@@ -281,6 +294,8 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
         }
 
         glBindVertexArray(0);
+
+        BlurTiming::end();
 
         if (currentRenderToFB != PMIRRORFB)
             currentRenderToFB = PMIRRORFB;

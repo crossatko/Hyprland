@@ -7,12 +7,24 @@
 
 #include <optional>
 
+namespace Desktop::View {
+    class CWLSurface;
+}
+
 namespace Render {
     class CRenderContext;
+    class ITexture;
     struct SBlurShape {
         CBox  box;
         float radius        = 0.F;
         float roundingPower = 2.F;
+
+        // layer surfaces only: the visible shape is not the surface box, so materials that care
+        // can derive it from the surface alpha, or from the client-declared blur region.
+        SP<ITexture>                  surfaceTexture;
+        WP<Desktop::View::CWLSurface> surface;
+        float                         surfaceScale   = 1.F;
+        float                         alphaThreshold = 0.F;
     };
 
     struct SBlurContext {
@@ -34,6 +46,7 @@ namespace Render {
         BLUR_ACRYLIC      = 8,
         BLUR_AURORA       = 9,
         BLUR_HAZE         = 10,
+        BLUR_SOLID_GLASS  = 11,
     };
 
     // "Jaki kurwa provident????"

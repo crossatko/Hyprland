@@ -290,6 +290,34 @@ void CShader::getUniformLocations() {
     m_uniformLocations[SHADER_POINTER_INACTIVE_TIMEOUT]    = getUniform("pointer_inactive_timeout");
     m_uniformLocations[SHADER_POINTER_LAST_ACTIVE]         = getUniform("pointer_last_active");
     m_uniformLocations[SHADER_POINTER_SIZE]                = getUniform("pointer_size");
+
+    m_uniformLocations[SHADER_SOLIDGLASS_ENABLED]            = getUniform("solidGlassEnabled");
+    m_uniformLocations[SHADER_SOLIDGLASS_EXTENT]             = getUniform("solidGlassExtent");
+    m_uniformLocations[SHADER_SOLIDGLASS_RADIUS]             = getUniform("solidGlassRadius");
+    m_uniformLocations[SHADER_SOLIDGLASS_ROUNDING_POWER]     = getUniform("solidGlassRoundingPower");
+    m_uniformLocations[SHADER_SOLIDGLASS_REFRACTION]         = getUniform("solidGlassRefraction");
+    m_uniformLocations[SHADER_SOLIDGLASS_BULB]               = getUniform("solidGlassBulb");
+    m_uniformLocations[SHADER_SOLIDGLASS_CLARITY]            = getUniform("solidGlassClarity");
+    m_uniformLocations[SHADER_SOLIDGLASS_ABERRATION]         = getUniform("solidGlassAberration");
+    m_uniformLocations[SHADER_SOLIDGLASS_TINT]               = getUniform("solidGlassTint");
+    m_uniformLocations[SHADER_SOLIDGLASS_STRENGTH]           = getUniform("solidGlassStrength");
+    m_uniformLocations[SHADER_SOLIDGLASS_TRANSFER_FUNCTION]  = getUniform("solidGlassTransferFunction");
+    m_uniformLocations[SHADER_SOLIDGLASS_LUMINANCE_SCALE]    = getUniform("solidGlassLuminanceScale");
+    m_uniformLocations[SHADER_SOLIDGLASS_DEPTH]              = getUniform("solidGlassDepth");
+    m_uniformLocations[SHADER_SOLIDGLASS_EDGE_CURVE]         = getUniform("solidGlassEdgeCurve");
+    m_uniformLocations[SHADER_SOLIDGLASS_LIGHT_DIR]          = getUniform("solidGlassLightDir");
+    m_uniformLocations[SHADER_SOLIDGLASS_SPECULAR_INTENSITY] = getUniform("solidGlassSpecularIntensity");
+    m_uniformLocations[SHADER_SOLIDGLASS_SPECULAR_POWER]     = getUniform("solidGlassSpecularPower");
+    m_uniformLocations[SHADER_SOLIDGLASS_SHEEN]              = getUniform("solidGlassSheen");
+    m_uniformLocations[SHADER_SOLIDGLASS_SATURATION]         = getUniform("solidGlassSaturation");
+    m_uniformLocations[SHADER_SOLIDGLASS_FROST]              = getUniform("solidGlassFrost");
+    m_uniformLocations[SHADER_SOLIDGLASS_DARKENING]          = getUniform("solidGlassDarkening");
+    m_uniformLocations[SHADER_SOLIDGLASS_MASK_MODE]          = getUniform("solidGlassMaskMode");
+    m_uniformLocations[SHADER_SOLIDGLASS_MASK]               = getUniform("solidGlassMask");
+    m_uniformLocations[SHADER_SOLIDGLASS_MASK_CUTOFF]        = getUniform("solidGlassMaskThreshold");
+    m_uniformLocations[SHADER_SOLIDGLASS_MASK_BOX]           = getUniform("solidGlassMaskBox");
+    m_uniformLocations[SHADER_SOLIDGLASS_SHAPE_COUNT]        = getUniform("solidGlassShapeCount");
+    m_uniformLocations[SHADER_SOLIDGLASS_SHAPES]             = getUniform("solidGlassShapes[0]");
 }
 
 void CShader::createVao() {

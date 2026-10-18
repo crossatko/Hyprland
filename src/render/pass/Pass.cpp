@@ -209,7 +209,19 @@ CRegion CRenderPass::render(CRenderContext& ctx, const CRegion& damage_) {
         liveBlurRegion = blurRegion.copy();
         g_pHyprRenderer->expandBlurDamage(liveBlurRegion, 2.F);
 
-        blurRegion.intersect(m_damage);
+        // Intersecting a live-blur consumer's own (unexpanded) bounding box against
+        // the raw damage only catches consumers whose box literally, directly
+        // overlaps whatever changed. A consumer's blur SAMPLES pixels beyond its
+        // own box (the dual-kawase radius), so a neighbouring, non-overlapping
+        // window's damage (e.g. a window sitting just above, whose content the
+        // consumer's edge should be reflecting) needs to count too if it's within
+        // that sampling reach -- otherwise only the sliver of the consumer that
+        // happens to directly overlap the raw damage rect updates, leaving the
+        // rest of its edge showing stale/background content. So: expand the
+        // damage by the sampling reach FIRST, then test for overlap.
+        CRegion reachableDamage = m_damage.copy();
+        g_pHyprRenderer->expandBlurDamage(reachableDamage, 4.F);
+        blurRegion.intersect(reachableDamage);
         g_pHyprRenderer->expandBlurDamage(blurRegion);
 
         ctx.m_data.finalDamage = blurRegion.copy().add(m_damage);

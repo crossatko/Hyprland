@@ -1,6 +1,7 @@
 #include "ElementRenderer.hpp"
 #include "SceneResources.hpp"
 #include "Renderer.hpp"
+#include "../desktop/view/WLSurface.hpp"
 #include "../layout/LayoutManager.hpp"
 #include "../desktop/view/window/Window.hpp"
 #include "../desktop/view/window/WindowEffectsController.hpp"
@@ -521,12 +522,23 @@ void IElementRenderer::drawTex(CRenderContext& ctx, WP<CTexPassElement> element,
             if (!element->m_data.blurShapeInvalid) {
                 auto shapeBox = box;
                 m_renderData.renderModif.applyToBox(shapeBox);
-                if (std::abs(shapeBox.rot) < 0.0001F)
+                if (std::abs(shapeBox.rot) < 0.0001F) {
                     shape = SBlurShape{
                         .box           = shapeBox,
                         .radius        = std::max(sc<float>(element->m_data.round), 0.F),
                         .roundingPower = element->m_data.roundingPower,
                     };
+
+                    // layers: the surface box says nothing about what is visible, hand over the
+                    // surface so materials can find the real shape (alpha / declared blur region)
+                    const auto PLS = element->m_data.currentLS.lock();
+                    if (PLS && PLS->wlSurface()->resource() == element->m_data.surface && m_renderData.pMonitor->m_transform == WL_OUTPUT_TRANSFORM_NORMAL) {
+                        shape->surfaceTexture = element->m_data.tex;
+                        shape->surface        = Desktop::View::CWLSurface::fromResource(element->m_data.surface);
+                        shape->surfaceScale   = m_renderData.pMonitor->m_scale;
+                        shape->alphaThreshold = (element->m_data.discardMode & DISCARD_ALPHA) ? element->m_data.discardOpacity : 0.F;
+                    }
+                }
             }
             blurredFB = g_pHyprRenderer->blurMainFramebuffer(
                 ctx, element->m_data.a, inverseOpaque,

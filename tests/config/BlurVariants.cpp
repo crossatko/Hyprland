@@ -22,10 +22,10 @@ TEST(Config, blurVariantsMatchRendererTypes) {
 
     EXPECT_EQ(INT_VALUE->defaultVal(), sc<Config::INTEGER>(eBlurType::BLUR_DUAL_KAWASE));
     EXPECT_EQ(*INT_VALUE->m_min, sc<Config::INTEGER>(eBlurType::BLUR_DUAL_KAWASE));
-    EXPECT_EQ(*INT_VALUE->m_max, sc<Config::INTEGER>(eBlurType::BLUR_HAZE));
+    EXPECT_EQ(*INT_VALUE->m_max, sc<Config::INTEGER>(eBlurType::BLUR_SOLID_GLASS));
 
     const auto& MAP = *INT_VALUE->m_map;
-    EXPECT_EQ(MAP.size(), 11);
+    EXPECT_EQ(MAP.size(), 12);
     EXPECT_EQ(MAP.at("kawase"), sc<Config::INTEGER>(eBlurType::BLUR_DUAL_KAWASE));
     EXPECT_EQ(MAP.at("frost"), sc<Config::INTEGER>(eBlurType::BLUR_FROST));
     EXPECT_FALSE(MAP.contains("fluted"));
@@ -39,6 +39,7 @@ TEST(Config, blurVariantsMatchRendererTypes) {
     EXPECT_EQ(MAP.at("acrylic"), sc<Config::INTEGER>(eBlurType::BLUR_ACRYLIC));
     EXPECT_EQ(MAP.at("aurora"), sc<Config::INTEGER>(eBlurType::BLUR_AURORA));
     EXPECT_EQ(MAP.at("haze"), sc<Config::INTEGER>(eBlurType::BLUR_HAZE));
+    EXPECT_EQ(MAP.at("solid_glass"), sc<Config::INTEGER>(eBlurType::BLUR_SOLID_GLASS));
     EXPECT_EQ(INT_VALUE->refreshBits(), Config::Supplementary::REFRESH_BLUR_FB);
 }
 
@@ -252,4 +253,51 @@ TEST(Config, fluidJarSettingsAreBounded) {
         EXPECT_FLOAT_EQ(*FLOAT_VALUE->m_max, setting.max);
         EXPECT_EQ(FLOAT_VALUE->refreshBits(), Config::Supplementary::REFRESH_BLUR_FB);
     }
+}
+
+TEST(Config, solidGlassSettingsAreBounded) {
+    struct SSolidGlassSetting {
+        std::string_view name;
+        float            defaultValue;
+        float            min;
+        float            max;
+    };
+
+    constexpr std::array SETTINGS = {
+        SSolidGlassSetting{"decoration:blur:solid_glass:refraction", 28.F, 0.F, 48.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:bulb", 48.F, 4.F, 256.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:clarity", 1.F, 0.F, 1.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:aberration", 0.05F, 0.F, 0.25F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:depth", 1.F, 0.F, 3.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:edge_curve", 1.F, 0.2F, 5.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:light_angle", 135.F, 0.F, 360.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:specular_intensity", 1.F, 0.F, 3.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:specular_power", 48.F, 1.F, 200.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:sheen", 0.14F, 0.F, 1.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:saturation", 1.25F, 0.F, 3.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:frost", 3.F, 0.F, 16.F},
+        SSolidGlassSetting{"decoration:blur:solid_glass:darkening", 0.35F, 0.F, 1.F},
+    };
+
+    for (const auto& setting : SETTINGS) {
+        const auto VALUE = std::ranges::find_if(CONFIG_VALUES, [&setting](const auto& value) { return std::string_view{value->name()} == setting.name; });
+        ASSERT_NE(VALUE, CONFIG_VALUES.end()) << setting.name;
+
+        const auto FLOAT_VALUE = dynamicPointerCast<CFloatValue>(*VALUE);
+        ASSERT_TRUE(FLOAT_VALUE) << setting.name;
+        ASSERT_TRUE(FLOAT_VALUE->m_min.has_value());
+        ASSERT_TRUE(FLOAT_VALUE->m_max.has_value());
+
+        EXPECT_FLOAT_EQ(FLOAT_VALUE->defaultVal(), setting.defaultValue) << setting.name;
+        EXPECT_FLOAT_EQ(*FLOAT_VALUE->m_min, setting.min) << setting.name;
+        EXPECT_FLOAT_EQ(*FLOAT_VALUE->m_max, setting.max) << setting.name;
+        EXPECT_EQ(FLOAT_VALUE->refreshBits(), Config::Supplementary::REFRESH_BLUR_FB) << setting.name;
+    }
+
+    const auto TINT = std::ranges::find_if(CONFIG_VALUES, [](const auto& value) { return std::string_view{value->name()} == "decoration:blur:solid_glass:tint"; });
+    ASSERT_NE(TINT, CONFIG_VALUES.end());
+    const auto COLOR_VALUE = dynamicPointerCast<CColorValue>(*TINT);
+    ASSERT_TRUE(COLOR_VALUE);
+    EXPECT_EQ(COLOR_VALUE->defaultVal(), 0x14EEF5FF);
+    EXPECT_EQ(COLOR_VALUE->refreshBits(), Config::Supplementary::REFRESH_BLUR_FB);
 }

@@ -10,6 +10,7 @@
 #include "Kawase.hpp"
 #include "Prism.hpp"
 #include "Ripple.hpp"
+#include "SolidGlass.hpp"
 #include "Water.hpp"
 #include "../../ShaderLoader.hpp"
 #include "../../../debug/log/Logger.hpp"
@@ -30,6 +31,7 @@ UP<IGLBlurProvider> Render::GL::createBlurProvider(eBlurType type, CHyprOpenGLIm
         case eBlurType::BLUR_ACRYLIC: return makeUnique<CAcrylicBlurProvider>(impl);
         case eBlurType::BLUR_AURORA: return makeUnique<CAuroraBlurProvider>(impl);
         case eBlurType::BLUR_HAZE: return makeUnique<CHazeBlurProvider>(impl);
+        case eBlurType::BLUR_SOLID_GLASS: return makeUnique<CSolidGlassBlurProvider>(impl);
     }
 
     LOG(Log::ERR, "Unknown blur provider {}, falling back to dual Kawase", sc<uint8_t>(type));
