@@ -1491,6 +1491,9 @@ WP<CShader> CHyprOpenGLImpl::renderToFBInternal(CRenderContext& ctx, SP<ITexture
     if (data.forceBlurBlend)
         shaderFeatures |= SH_FEAT_BLUR_ALPHA_MASK;
 
+    if (data.alphaMatte && data.alphaMatteRef > 0.F)
+        shaderFeatures |= SH_FEAT_ALPHA_MATTE;
+
     if (data.motionBlur.enabled)
         shaderFeatures |= SH_FEAT_MOTION_BLUR;
 
@@ -1561,6 +1564,16 @@ WP<CShader> CHyprOpenGLImpl::renderToFBInternal(CRenderContext& ctx, SP<ITexture
 
         setActiveTexture(GL_TEXTURE0 + 2);
         data.blurAlphaMatte->bind();
+    }
+
+    if (shaderFeatures & SH_FEAT_ALPHA_MATTE) {
+        shader->setUniformInt(SHADER_GLASS_ALPHA_MATTE, 3);
+        shader->setUniformFloat2(SHADER_GLASS_ALPHA_MATTE_UV_SCALE, data.alphaMatteUVScale.x, data.alphaMatteUVScale.y);
+        shader->setUniformFloat2(SHADER_GLASS_ALPHA_MATTE_UV_OFFSET, data.alphaMatteUVOffset.x, data.alphaMatteUVOffset.y);
+        shader->setUniformFloat(SHADER_GLASS_ALPHA_MATTE_REF, data.alphaMatteRef);
+
+        setActiveTexture(GL_TEXTURE0 + 3);
+        data.alphaMatte->bind();
     }
 
     if (data.discardActive) {
@@ -1952,8 +1965,32 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
         if (!data.blockBlurOptimization)
             ctx.m_data.renderModif.enabled = false;
 
+        // solid_glass on a LAYER surface with a background-effect region: the glass follows the surface's own alpha
+        // (layer_alpha_ref > 0), so a client fading its card fades the glass too. The glass is drawn with UVs in
+        // monitor space (BG_TL..BG_BR); the matte samples the surface texture at the same pixel (surface UVs
+        // SUV_TL..SUV_BR, 0..1 unless cropped). Windows are untouched (ignore_opacity behaviour stays as it is).
+        static auto PLAYERALPHAREF = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:layer_alpha_ref");
+        const bool  ALPHA_MATTE    = EFFECT_REGION && SOLID_GLASS && data.currentLS && *PLAYERALPHAREF > 0.F;
+        Vector2D    matteScale{1, 1}, matteOffset{0, 0};
+        if (ALPHA_MATTE) {
+            const Vector2D BG_TL  = monitorSpaceBox.pos() / m_renderData.pMonitor->m_transformedSize;
+            const Vector2D BG_BR  = (monitorSpaceBox.pos() + monitorSpaceBox.size()) / m_renderData.pMonitor->m_transformedSize;
+            const bool     HASUV  = ctx.m_data.primarySurfaceUVTopLeft != Vector2D(-1, -1);
+            const Vector2D SUV_TL = HASUV ? ctx.m_data.primarySurfaceUVTopLeft : Vector2D{0, 0};
+            const Vector2D SUV_BR = HASUV ? ctx.m_data.primarySurfaceUVBottomRight : Vector2D{1, 1};
+            const Vector2D BGSIZE = BG_BR - BG_TL;
+            if (BGSIZE.x > 0 && BGSIZE.y > 0) {
+                matteScale  = (SUV_BR - SUV_TL) / BGSIZE;
+                matteOffset = SUV_TL - BG_TL * matteScale;
+            }
+        }
+
         renderTextureInternal(ctx, data.blurredBG, box,
                               STextureRenderData{
+                                  .alphaMatte         = ALPHA_MATTE ? tex : nullptr,
+                                  .alphaMatteUVScale  = matteScale,
+                                  .alphaMatteUVOffset = matteOffset,
+                                  .alphaMatteRef      = ALPHA_MATTE ? sc<float>(*PLAYERALPHAREF) : 0.F,
                                   .damage         = data.damage,
                                   .a              = (*PBLURIGNOREOPACITY ? data.blurA : data.a * data.blurA) * data.overallA,
                                   .round          = data.round,

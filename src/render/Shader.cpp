@@ -156,6 +156,10 @@ void CShader::getUniformLocations() {
     m_uniformLocations[SHADER_MOTION_SOURCE_TEX_SIZE]   = getUniform("motionSourceTexSize");
     m_uniformLocations[SHADER_MOTION_SAMPLES]           = getUniform("motionSamples");
     m_uniformLocations[SHADER_BLUR_ALPHA_MATTE]         = getUniform("blurAlphaMatte");
+    m_uniformLocations[SHADER_GLASS_ALPHA_MATTE]        = getUniform("glassAlphaMatte");
+    m_uniformLocations[SHADER_GLASS_ALPHA_MATTE_UV_SCALE]  = getUniform("glassAlphaMatteUVScale");
+    m_uniformLocations[SHADER_GLASS_ALPHA_MATTE_UV_OFFSET] = getUniform("glassAlphaMatteUVOffset");
+    m_uniformLocations[SHADER_GLASS_ALPHA_MATTE_REF]    = getUniform("glassAlphaMatteRef");
     m_uniformLocations[SHADER_BLUR_ALPHA]               = getUniform("blurAlpha");
     m_uniformLocations[SHADER_ALPHA]                    = getUniform("alpha");
     m_uniformLocations[SHADER_POS_ATTRIB]               = getAttrib("pos");

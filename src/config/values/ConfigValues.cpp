@@ -333,6 +333,10 @@ std::vector<SP<IValue>> Values::getConfigValues() {
                   {.min = 0, .max = 16, .refresh = Supplementary::REFRESH_BLUR_FB}),
         MS<Float>("decoration:blur:solid_glass:darkening", "how much the backdrop is darkened inside the glass. 0 is none, 1 is black", 0.35F,
                   {.min = 0, .max = 1, .refresh = Supplementary::REFRESH_BLUR_FB}),
+        MS<Float>("decoration:blur:solid_glass:layer_alpha_ref",
+                  "layers only: the glass of a layer surface follows the surface's own alpha at each pixel, full strength at this alpha "
+                  "(e.g. the client's card fill alpha), so a client fading its card fades the glass. 0 = off (glass ignores the surface alpha)",
+                  0.F, {.min = 0, .max = 1, .refresh = Supplementary::REFRESH_BLUR_FB}),
 
         MS<Float>("decoration:blur:ripple:strength", "maximum refraction displacement of click ripples in pixels", 30.F,
                   {.min = 0, .max = 32, .refresh = Supplementary::REFRESH_BLUR_FB}),

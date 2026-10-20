@@ -153,6 +153,10 @@ namespace Render::GL {
             bool                   blockBlurOptimization = false;
             SP<ITexture>           blurredBG;
             SP<ITexture>           blurAlphaMatte;
+            SP<ITexture>           alphaMatte;      // multiply the output by clamp(alphaMatte.a / alphaMatteRef) (solid_glass on layers)
+            Vector2D               alphaMatteUVScale  = {1, 1};
+            Vector2D               alphaMatteUVOffset = {0, 0};
+            float                  alphaMatteRef      = 0.F;
             const CRegion*         damage        = nullptr;
             SP<CWLSurfaceResource> surface       = nullptr;
             float                  a             = 1.F;
