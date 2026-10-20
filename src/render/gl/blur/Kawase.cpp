@@ -108,6 +108,9 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
 
     std::string timingLabel;
     if (BlurTiming::enabled()) {
+        int64_t blurPx = 0;
+        workingDamage.forEachRect([&blurPx](const auto& RECT) { blurPx += sc<int64_t>(RECT.x2 - RECT.x1) * (RECT.y2 - RECT.y1); });
+        BlurTiming::addBlurWork(blurPx);
         const auto BOX = context.shape ? context.shape->box : CBox{};
         timingLabel    = std::format("type {} {}x{}", sc<int>(m_material->type()), sc<int>(BOX.width), sc<int>(BOX.height));
         BlurTiming::begin(timingLabel + " passes");

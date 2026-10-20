@@ -1,5 +1,6 @@
 #include "GLRenderer.hpp"
 #include "decorations/CHyprInnerGlowDecoration.hpp"
+#include "gl/blur/BlurTiming.hpp"
 #include <aquamarine/output/Output.hpp>
 #include "../config/ConfigValue.hpp"
 #include "../pointer/cursor/CursorManager.hpp"
@@ -126,10 +127,20 @@ SRenderResult CHyprGLRenderer::endRender(const std::function<void()>& renderingD
     const auto        mode               = m_context.m_mode;
     static auto       PNVIDIAANTIFLICKER = CConfigValue<Config::INTEGER>("opengl:nvidia_anti_flicker");
 
+    const bool TIMED_FRAME = mode == RENDER_MODE_NORMAL && GL::BlurTiming::frameTimingWanted();
+    if (TIMED_FRAME) {
+        int64_t damagePx = 0;
+        m_context.m_data.damage.forEachRect([&damagePx](const auto& RECT) { damagePx += sc<int64_t>(RECT.x2 - RECT.x1) * (RECT.y2 - RECT.y1); });
+        GL::BlurTiming::frameBegin(PMONITOR->m_id, damagePx);
+    }
+
     m_context.m_data.damage = m_context.m_pass.render(m_context, m_context.m_data.damage);
 
     if (mode != RENDER_MODE_TO_BUFFER_READ_ONLY)
         g_pHyprOpenGL->end(m_context);
+
+    if (TIMED_FRAME)
+        GL::BlurTiming::frameEnd();
 
     SRenderResult result{
         .finalDamage = m_context.m_data.damage,

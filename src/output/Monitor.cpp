@@ -64,6 +64,7 @@
 #include <cstring>
 #include <climits>
 #include <optional>
+#include "../render/gl/blur/BlurTiming.hpp"
 #include <ranges>
 #include <vector>
 #include <algorithm>
@@ -154,6 +155,8 @@ void CMonitor::onConnect(bool noRule) {
         }
 
         PROTO::presentation->onPresented(m_self.lock(), ts, event.refresh, event.seq, flags, event.commitID, event.presented);
+
+        Render::GL::BlurTiming::present(m_id, sc<uint64_t>(ts.tv_sec) * 1000000000ULL + sc<uint64_t>(ts.tv_nsec), event.presented, event.refresh);
 
         m_commitCoordinator->onPresented(event.commitID, event.presented);
 
