@@ -36,6 +36,8 @@ namespace Render::GL {
         void                              prepareForFrame(CRenderContext& ctx, const SBlurMaterialContext& context);
         virtual void                      prepare(CRenderContext& ctx, const SBlurMaterialContext& context);
         virtual void                      bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const;
+        // before each scissored draw of the finish, rect in the blur framebuffer (monitor device px)
+        virtual void bindFinishRect(WP<CShader> shader, const CBox& rect) const;
 
       protected:
         IGLBlurMaterial() = default;

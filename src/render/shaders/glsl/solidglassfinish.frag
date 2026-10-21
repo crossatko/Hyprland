@@ -41,6 +41,9 @@ uniform vec4 solidGlassMaskBox;
 // in a shape directly follow it, `descendants` of them
 #define MAX_SHAPES 48
 uniform int solidGlassShapeCount;
+// the shapes the current draw rect can touch (see bindFinishRect), [first, end)
+uniform int solidGlassShapeFirst;
+uniform int solidGlassShapeEnd;
 uniform vec4 solidGlassShapes[MAX_SHAPES * 3];
 uniform float noise;
 uniform float brightness;
@@ -188,9 +191,10 @@ SGlassShape solidGlassListShape(int index) {
 int solidGlassFindShape() {
     vec2 position = gl_FragCoord.xy - solidGlassExtent.xy;
     int found = -1;
-    int i = 0;
+    int i = solidGlassShapeFirst;
+    int end = min(solidGlassShapeEnd, solidGlassShapeCount);
     for (int guard = 0; guard < MAX_SHAPES; guard++) {
-        if (i >= solidGlassShapeCount)
+        if (i >= end)
             break;
         vec4 rect = solidGlassShapes[i * 3];
         vec2 local = position - rect.xy;

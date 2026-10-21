@@ -304,7 +304,8 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
         glBindVertexArray(shader->getUniformLocation(SHADER_SHADER_VAO));
 
         if (!outputDamage.empty()) {
-            outputDamage.forEachRect([this, &ctx](const auto& RECT) {
+            outputDamage.forEachRect([this, &ctx, &shader](const auto& RECT) {
+                m_material->bindFinishRect(shader, CBox{sc<double>(RECT.x1), sc<double>(RECT.y1), sc<double>(RECT.x2 - RECT.x1), sc<double>(RECT.y2 - RECT.y1)});
                 m_impl.scissor(ctx, &RECT, false /* this region is already transformed */);
                 glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             });

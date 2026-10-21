@@ -24,6 +24,10 @@ int64_t IGLBlurMaterial::blurSizeForDamage(int64_t size) const {
     return size;
 }
 
+void IGLBlurMaterial::bindFinishRect(WP<CShader> shader, const CBox& rect) const {
+    ;
+}
+
 bool IGLBlurMaterial::needsBlurredInput() const {
     return true;
 }

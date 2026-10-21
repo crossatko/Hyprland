@@ -199,7 +199,28 @@ void CSolidGlassBlurMaterial::packShapes(const std::vector<SSolidGlassShape>& sh
     }
 }
 
+// the finish is drawn rect by rect (damage clipped to the glass boxes): the shader only has to search the shapes whose
+// box (+ its 1 px antialiasing band, as in solidGlassFindShape) touches the rect. Shapes are in preorder and a nested
+// shape lies inside its parent, so the touching ones form a range that keeps every parent before its children; shapes
+// outside of it cannot contain a pixel of the rect. The result per pixel is unchanged
+void CSolidGlassBlurMaterial::bindFinishRect(WP<CShader> shader, const CBox& rect) const {
+    if (m_finishShapeBoxes.empty())
+        return;
+
+    int first = -1, last = -1;
+    for (size_t i = 0; i < m_finishShapeBoxes.size(); ++i) {
+        if (!m_finishShapeBoxes[i].copy().expand(2.0).intersection(rect).empty()) {
+            if (first < 0)
+                first = sc<int>(i);
+            last = sc<int>(i);
+        }
+    }
+    shader->setUniformInt(SHADER_SOLIDGLASS_SHAPE_FIRST, first < 0 ? 0 : first);
+    shader->setUniformInt(SHADER_SOLIDGLASS_SHAPE_END, first < 0 ? 0 : last + 1);
+}
+
 void CSolidGlassBlurMaterial::bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const {
+    m_finishShapeBoxes.clear();
     shader->setUniformInt(SHADER_SOLIDGLASS_ENABLED, 0);
     shader->setUniformInt(SHADER_SOLIDGLASS_MASK_MODE, 0);
 
@@ -256,6 +277,10 @@ void CSolidGlassBlurMaterial::bindFinish(CRenderContext& ctx, WP<CShader> shader
         maskMode = 3;
         packShapes(GLASS->shapes, context.blurContext.shape->surfaceScale);
         shader->setUniformInt(SHADER_SOLIDGLASS_SHAPE_COUNT, sc<int>(GLASS->shapes.size()));
+        shader->setUniformInt(SHADER_SOLIDGLASS_SHAPE_FIRST, 0);
+        shader->setUniformInt(SHADER_SOLIDGLASS_SHAPE_END, sc<int>(GLASS->shapes.size()));
+        for (size_t i = 0; i + 3 < m_shapeUniforms.size(); i += 12)
+            m_finishShapeBoxes.emplace_back(extent.x + m_shapeUniforms[i], extent.y + m_shapeUniforms[i + 1], m_shapeUniforms[i + 2], m_shapeUniforms[i + 3]);
         shader->setUniform4fv(SHADER_SOLIDGLASS_SHAPES, sc<GLsizei>(m_shapeUniforms.size() / 4), m_shapeUniforms);
         shader->setUniformInt(SHADER_SOLIDGLASS_MASK_MODE, maskMode);
     } else if (const auto FIELD = GLASS ? regionField(*context.blurContext.shape, BULB_PX) : std::nullopt; FIELD) {

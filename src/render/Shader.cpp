@@ -321,6 +321,8 @@ void CShader::getUniformLocations() {
     m_uniformLocations[SHADER_SOLIDGLASS_MASK_CUTOFF]        = getUniform("solidGlassMaskThreshold");
     m_uniformLocations[SHADER_SOLIDGLASS_MASK_BOX]           = getUniform("solidGlassMaskBox");
     m_uniformLocations[SHADER_SOLIDGLASS_SHAPE_COUNT]        = getUniform("solidGlassShapeCount");
+    m_uniformLocations[SHADER_SOLIDGLASS_SHAPE_FIRST]        = getUniform("solidGlassShapeFirst");
+    m_uniformLocations[SHADER_SOLIDGLASS_SHAPE_END]          = getUniform("solidGlassShapeEnd");
     m_uniformLocations[SHADER_SOLIDGLASS_SHAPES]             = getUniform("solidGlassShapes[0]");
 }
 

@@ -16,6 +16,7 @@ namespace Render::GL {
         SBlurMaterialRequirements requirements() const noexcept override;
         float                     sampleRadius() const override;
         bool                      needsBlurredInput() const override;
+        void                      bindFinishRect(WP<CShader> shader, const CBox& rect) const override;
         void                      bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const override;
 
       private:
@@ -37,6 +38,8 @@ namespace Render::GL {
         void                              packShapes(const std::vector<SSolidGlassShape>& shapes, float scale) const;
         mutable std::vector<SRegionField> m_regionFields;
         mutable std::vector<float>        m_shapeUniforms;
+        // shape list of the current finish (mode 3): boxes in the blur framebuffer, for bindFinishRect
+        mutable std::vector<CBox>         m_finishShapeBoxes;
     };
 
     class CSolidGlassBlurProvider final : public CDualKawaseBlurProvider {
