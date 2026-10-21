@@ -324,8 +324,10 @@ bool solidGlassAlphaShape(out SGlassShape s) {
 
 // the sharp backdrop softened by a small fixed kernel (13 taps on two hex rings, radius in device px),
 // independent of the dual kawase size and passes
-vec3 solidGlassFrostSample(vec2 uv, vec2 minimumUV, vec2 maximumUV) {
+// center: the unfrosted tap at uv (the chromatic split reuses it)
+vec3 solidGlassFrostSample(vec2 uv, vec2 minimumUV, vec2 maximumUV, out vec3 center) {
     vec3 sum = solidGlassSample(sharpTex, clamp(uv, minimumUV, maximumUV));
+    center = sum;
     if (solidGlassFrost <= 0.05)
         return sum;
 
@@ -365,6 +367,13 @@ SGlassOptics solidGlassOptics(SGlassShape s, float effect) {
     float thin = clamp(s.bulb / max(solidGlassBulb, 1.0), 0.0, 1.0);
     float bend = min(solidGlassRefraction * solidGlassDepth * sqrt(thin), s.bulb * 1.5) * o.lens * effect;
     o.displacement = -s.outward * bend;
+
+    // lighting is scaled by the specular intensity: nothing to compute without it
+    if (solidGlassSpecularIntensity <= 0.0) {
+        o.highlight = 0.0;
+        o.shadow = 0.0;
+        return o;
+    }
 
     // lighting: a thin specular rim lit from solidGlassLightDir, a softer counter highlight on the opposite
     // side, a broad sheen on the lit side and an inner edge shadow. All of it follows continuous distances,
@@ -448,7 +457,8 @@ vec4 applySolidGlass(vec4 blurred) {
 
     // the interior shows the (lightly frosted) sharp backdrop; clarity < 1 mixes the big blur back in
     float sharpMix = clamp(solidGlassClarity, 0.0, 1.0);
-    vec3 glass = solidGlassFrostSample(uv, halfTexel, maximumUV);
+    vec3 base;
+    vec3 glass = solidGlassFrostSample(uv, halfTexel, maximumUV, base);
     if (sharpMix < 0.999)
         glass = mix(solidGlassSample(tex, uv), glass, sharpMix);
 
@@ -458,7 +468,6 @@ vec4 applySolidGlass(vec4 blurred) {
     if (aberration > 0.0001 && dot(optics.displacement, optics.displacement) > 0.0025) {
         vec2 redUV = clamp(v_texcoord + displacementUV * (1.0 + aberration), halfTexel, maximumUV);
         vec2 blueUV = clamp(v_texcoord + displacementUV * (1.0 - aberration), halfTexel, maximumUV);
-        vec3 base = solidGlassSample(sharpTex, uv);
         glass.r += solidGlassSample(sharpTex, redUV).r - base.r;
         glass.b += solidGlassSample(sharpTex, blueUV).b - base.b;
         glass = max(glass, vec3(0.0));
