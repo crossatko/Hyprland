@@ -18,7 +18,7 @@ namespace {
     struct SSection {
         GLuint      q0 = 0, q1 = 0;
         std::string label;
-        bool        passes = false;
+        int         kind = 2; // 0: blur passes, 1: blur finish, 2: other (summary only)
     };
 
     struct SFrame {
@@ -44,8 +44,7 @@ namespace {
         std::deque<SFrame>                    pendingFrames;
         std::deque<SSection>                  looseSections; // sections outside a timed frame
         SFrame                                current;
-        bool                                  sectionOpen = false;
-        SSection                              openSection;
+        std::vector<SSection>                 openSections; // timestamps nest
         bool                                  runtimeWanted = false;
         BlurTiming::FrameCallback             callback;
         std::map<std::string, SStat>          stats;
@@ -168,7 +167,10 @@ static void collect() {
             const auto S0 = result(sec.q0);
             const auto S1 = result(sec.q1);
             const auto D  = S1 > S0 ? S1 - S0 : 0;
-            (sec.passes ? passes : finish) += D;
+            if (sec.kind == 0)
+                passes += D;
+            else if (sec.kind == 1)
+                finish += D;
             record(sec.label, D / 1000000.0);
         }
         record("frame gpu", GPU / 1000000.0);
@@ -218,22 +220,22 @@ void BlurTiming::begin(const std::string& label) {
     if (!enabled() || !loadProcs())
         return;
     auto& s = state();
-    if (s.sectionOpen)
+    if (s.openSections.size() > 16)
         return;
-    s.openSection = SSection{.q0 = stamp(), .label = label, .passes = label.ends_with("passes")};
-    s.sectionOpen = true;
+    s.openSections.emplace_back(SSection{.q0 = stamp(), .label = label, .kind = label.ends_with(" passes") ? 0 : label.ends_with(" finish") ? 1 : 2});
 }
 
 void BlurTiming::end() {
     auto& s = state();
-    if (!enabled() || !s.sectionOpen)
+    if (!enabled() || s.openSections.empty())
         return;
-    s.openSection.q1 = stamp();
-    s.sectionOpen    = false;
+    auto section = std::move(s.openSections.back());
+    s.openSections.pop_back();
+    section.q1 = stamp();
     if (s.current.open)
-        s.current.sections.emplace_back(std::move(s.openSection));
+        s.current.sections.emplace_back(std::move(section));
     else
-        s.looseSections.emplace_back(std::move(s.openSection));
+        s.looseSections.emplace_back(std::move(section));
 }
 
 void BlurTiming::addCpu(const std::string& label, float ms) {
@@ -274,7 +276,7 @@ void BlurTiming::frameEnd() {
     auto& s = state();
     if (!s.current.open)
         return;
-    if (s.sectionOpen)
+    while (!s.openSections.empty())
         end();
     s.current.q1       = stamp();
     s.current.cpuEndNs = nowNs();

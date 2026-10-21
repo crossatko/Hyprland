@@ -1,6 +1,7 @@
 #include "Pass.hpp"
 #include "../SceneResources.hpp"
 #include "../OpenGL.hpp"
+#include "../gl/blur/BlurTiming.hpp"
 #include <algorithm>
 #include <ranges>
 #include "../../Compositor.hpp"
@@ -262,7 +263,10 @@ CRegion CRenderPass::render(CRenderContext& ctx, const CRegion& damage_) {
         }
 
         ctx.m_data.damage = el.elementDamage;
+        if (Render::GL::BlurTiming::enabled())
+            Render::GL::BlurTiming::begin(std::string{"element "} + el.element->passName());
         g_pHyprRenderer->draw(ctx, el.element, el.elementDamage);
+        Render::GL::BlurTiming::end();
 
         if (!providerIsAnimated || (!el.element->needsLiveBlurCached && !el.element->needsPrecomputeBlurCached))
             continue;
