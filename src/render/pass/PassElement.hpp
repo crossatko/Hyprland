@@ -41,8 +41,8 @@ class IPassElement {
     virtual CRegion             opaqueRegion(Render::CRenderContext& ctx); // in monitor-local logical coordinates
     // where a live blur of this element can be visible (monitor-local logical), defaults to the bounding box
     virtual CRegion liveBlurRegion(Render::CRenderContext& ctx);
-    virtual bool                disableSimplification(Render::CRenderContext& ctx);
-    virtual bool                requiresFullDamage(Render::CRenderContext& ctx);
+    virtual bool    disableSimplification(Render::CRenderContext& ctx);
+    virtual bool    requiresFullDamage(Render::CRenderContext& ctx);
 
     // cached results, computed once per frame in CRenderPass::render()
     bool needsLiveBlurCached       = false;

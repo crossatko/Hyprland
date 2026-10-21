@@ -33,9 +33,9 @@ namespace Render::GL {
         virtual float                     sampleRadius() const;
         // false if the finish shader reads only the prepared (sharp) input this frame: the dual kawase passes are skipped
         virtual bool needsBlurredInput() const;
-        void                              prepareForFrame(CRenderContext& ctx, const SBlurMaterialContext& context);
-        virtual void                      prepare(CRenderContext& ctx, const SBlurMaterialContext& context);
-        virtual void                      bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const;
+        void         prepareForFrame(CRenderContext& ctx, const SBlurMaterialContext& context);
+        virtual void prepare(CRenderContext& ctx, const SBlurMaterialContext& context);
+        virtual void bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const;
         // before each scissored draw of the finish, rect in the blur framebuffer (monitor device px)
         virtual void bindFinishRect(WP<CShader> shader, const CBox& rect) const;
 

@@ -39,7 +39,7 @@ namespace Render::GL {
         mutable std::vector<SRegionField> m_regionFields;
         mutable std::vector<float>        m_shapeUniforms;
         // shape list of the current finish (mode 3): boxes in the blur framebuffer, for bindFinishRect
-        mutable std::vector<CBox>         m_finishShapeBoxes;
+        mutable std::vector<CBox> m_finishShapeBoxes;
     };
 
     class CSolidGlassBlurProvider final : public CDualKawaseBlurProvider {

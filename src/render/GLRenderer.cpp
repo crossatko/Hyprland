@@ -127,7 +127,7 @@ SRenderResult CHyprGLRenderer::endRender(const std::function<void()>& renderingD
     const auto        mode               = m_context.m_mode;
     static auto       PNVIDIAANTIFLICKER = CConfigValue<Config::INTEGER>("opengl:nvidia_anti_flicker");
 
-    const bool TIMED_FRAME = mode == RENDER_MODE_NORMAL && GL::BlurTiming::frameTimingWanted();
+    const bool        TIMED_FRAME = mode == RENDER_MODE_NORMAL && GL::BlurTiming::frameTimingWanted();
     if (TIMED_FRAME) {
         int64_t damagePx = 0;
         m_context.m_data.damage.forEachRect([&damagePx](const auto& RECT) { damagePx += sc<int64_t>(RECT.x2 - RECT.x1) * (RECT.y2 - RECT.y1); });

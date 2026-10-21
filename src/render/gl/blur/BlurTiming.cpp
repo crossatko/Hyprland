@@ -48,8 +48,8 @@ namespace {
         bool                                  runtimeWanted = false;
         BlurTiming::FrameCallback             callback;
         std::map<std::string, SStat>          stats;
-        std::chrono::steady_clock::time_point lastPrint = std::chrono::steady_clock::now();
-        FILE*                                 profile   = nullptr;
+        std::chrono::steady_clock::time_point lastPrint     = std::chrono::steady_clock::now();
+        FILE*                                 profile       = nullptr;
         bool                                  profileOpened = false;
     };
 }
@@ -157,12 +157,12 @@ static void collect() {
 
     // frames complete in order: the end stamp of a frame is issued after all of its sections
     while (!s.pendingFrames.empty() && available(s.pendingFrames.front().q1)) {
-        auto&      frame   = s.pendingFrames.front();
-        const auto T0      = result(frame.q0);
-        const auto T1      = result(frame.q1);
-        const auto GPU     = T1 > T0 ? T1 - T0 : 0;
-        uint64_t   passes  = 0;
-        uint64_t   finish  = 0;
+        auto&      frame  = s.pendingFrames.front();
+        const auto T0     = result(frame.q0);
+        const auto T1     = result(frame.q1);
+        const auto GPU    = T1 > T0 ? T1 - T0 : 0;
+        uint64_t   passes = 0;
+        uint64_t   finish = 0;
         for (auto& sec : frame.sections) {
             const auto S0 = result(sec.q0);
             const auto S1 = result(sec.q1);
@@ -177,8 +177,8 @@ static void collect() {
         record("frame cpu", (frame.cpuEndNs - frame.cpuStartNs) / 1000000.0);
 
         if (auto* f = profileFile())
-            std::fputs(std::format("F,{},{},{:.1f},{:.1f},{:.1f},{:.1f},{},{},{}\n", frame.cpuEndNs, frame.monitor, (frame.cpuEndNs - frame.cpuStartNs) / 1000.0, GPU / 1000.0, passes / 1000.0,
-                         finish / 1000.0, frame.blurCalls, frame.blurPx, frame.damagePx)
+            std::fputs(std::format("F,{},{},{:.1f},{:.1f},{:.1f},{:.1f},{},{},{}\n", frame.cpuEndNs, frame.monitor, (frame.cpuEndNs - frame.cpuStartNs) / 1000.0, GPU / 1000.0,
+                                   passes / 1000.0, finish / 1000.0, frame.blurCalls, frame.blurPx, frame.damagePx)
                            .c_str(),
                        f);
 
