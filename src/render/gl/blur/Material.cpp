@@ -24,6 +24,10 @@ int64_t IGLBlurMaterial::blurSizeForDamage(int64_t size) const {
     return size;
 }
 
+bool IGLBlurMaterial::needsBlurredInput(CRenderContext& ctx) const {
+    return true;
+}
+
 float IGLBlurMaterial::sampleRadius() const {
     return 0.F;
 }

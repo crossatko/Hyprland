@@ -72,6 +72,13 @@ float CSolidGlassBlurMaterial::sampleRadius() const {
     return solidGlassSampleRadius(*PSOLIDGLASSREFRACTION, *PSOLIDGLASSFROST);
 }
 
+// the finish mixes the dual kawase result in only with clarity < 1 (see solidglassfinish.frag). Otherwise it reads the
+// sharp prepared backdrop alone and the passes would be thrown away
+bool CSolidGlassBlurMaterial::needsBlurredInput(CRenderContext& ctx) const {
+    static auto PSOLIDGLASSCLARITY = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:clarity");
+    return std::clamp(*PSOLIDGLASSCLARITY, 0.F, 1.F) < 0.999F;
+}
+
 static constexpr float MASK_ALPHA_THRESHOLD = 0.04F;
 
 // px of field kept around the region extents, must cover the antialiasing band of the field

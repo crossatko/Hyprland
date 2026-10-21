@@ -89,13 +89,18 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
     };
     m_material->prepareForFrame(ctx, materialContext);
 
-    CRegion workingDamage{outputDamage};
-    expandDamage(workingDamage);
-    // nothing outside the framebuffer is ever sampled
-    workingDamage.intersect(MONITORBOX);
-
     const auto MATERIAL_REQUIREMENTS   = m_material->requirements();
     const bool REQUIRES_PREPARED_INPUT = MATERIAL_REQUIREMENTS.preparedInput;
+    // a material that reads only the prepared input this frame gets no dual kawase passes
+    const bool SKIP_PASSES = REQUIRES_PREPARED_INPUT && !m_material->needsBlurredInput(ctx);
+
+    CRegion    workingDamage{outputDamage};
+    if (SKIP_PASSES)
+        workingDamage.expand(m_material->sampleRadius());
+    else
+        expandDamage(workingDamage);
+    // nothing outside the framebuffer is ever sampled
+    workingDamage.intersect(MONITORBOX);
 
     const auto PMIRRORFB     = dynamicPointerCast<CGLFramebuffer>(g_pHyprRenderer->getWorkBuffer(ctx));
     const auto PMIRRORSWAPFB = dynamicPointerCast<CGLFramebuffer>(g_pHyprRenderer->getWorkBuffer(ctx));
@@ -219,18 +224,21 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
     PMIRRORFB->clearAfterInvalidation();
     PMIRRORSWAPFB->getTexture()->bind();
 
-    CRegion tempDamage{workingDamage};
+    CRegion     tempDamage{workingDamage};
 
-    auto    shader = m_impl.useShader(m_impl.getShaderVariant(SH_FRAG_BLUR1));
-    for (auto i = 1; i <= BLUR_PASSES; ++i) {
-        tempDamage = workingDamage.copy().scale(1.f / (1 << i));
-        drawPass(shader, SH_FRAG_BLUR1, &tempDamage);
-    }
+    WP<CShader> shader;
+    if (!SKIP_PASSES) {
+        shader = m_impl.useShader(m_impl.getShaderVariant(SH_FRAG_BLUR1));
+        for (auto i = 1; i <= BLUR_PASSES; ++i) {
+            tempDamage = workingDamage.copy().scale(1.f / (1 << i));
+            drawPass(shader, SH_FRAG_BLUR1, &tempDamage);
+        }
 
-    shader = m_impl.useShader(m_impl.getShaderVariant(SH_FRAG_BLUR2));
-    for (auto i = BLUR_PASSES - 1; i >= 0; --i) {
-        tempDamage = workingDamage.copy().scale(1.f / (1 << i));
-        drawPass(shader, SH_FRAG_BLUR2, &tempDamage);
+        shader = m_impl.useShader(m_impl.getShaderVariant(SH_FRAG_BLUR2));
+        for (auto i = BLUR_PASSES - 1; i >= 0; --i) {
+            tempDamage = workingDamage.copy().scale(1.f / (1 << i));
+            drawPass(shader, SH_FRAG_BLUR2, &tempDamage);
+        }
     }
 
     BlurTiming::end();
