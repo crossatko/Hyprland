@@ -2,6 +2,7 @@
 #include "SceneResources.hpp"
 #include "Renderer.hpp"
 #include "../desktop/view/WLSurface.hpp"
+#include "blur/SolidGlassShapes.hpp"
 #include "../layout/LayoutManager.hpp"
 #include "../desktop/view/window/Window.hpp"
 #include "../desktop/view/window/WindowEffectsController.hpp"
@@ -516,6 +517,17 @@ void IElementRenderer::drawTex(CRenderContext& ctx, WP<CTexPassElement> element,
             inverseOpaque.translate(box.pos());
             m_renderData.renderModif.applyToRegion(inverseOpaque);
             inverseOpaque.intersect(element->m_data.damage);
+
+            // ext-background-effect: the blur is clipped to the declared region when drawn, blur only that (plus
+            // the antialiasing margin of the glass outline) instead of the whole surface
+            if (const auto* GLASS = solidGlassShapeCache()->get(Desktop::View::CWLSurface::fromResource(element->m_data.surface)); GLASS) {
+                CRegion glassRegion = GLASS->bounds.copy();
+                glassRegion.scale(m_renderData.pMonitor->m_scale);
+                glassRegion.translate(box.pos());
+                m_renderData.renderModif.applyToRegion(glassRegion);
+                glassRegion.expand(std::ceil(2 * m_renderData.pMonitor->m_scale));
+                inverseOpaque.intersect(glassRegion);
+            }
             auto patternBox = element->m_data.blurPatternBox.value_or(box);
             m_renderData.renderModif.applyToBox(patternBox);
             std::optional<SBlurShape> shape;

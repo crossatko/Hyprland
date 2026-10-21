@@ -153,10 +153,9 @@ CRegion CRenderPass::render(CRenderContext& ctx, const CRegion& damage_) {
         el.element->needsPrecomputeBlurCached = el.element->needsPrecomputeBlur(ctx);
 
         if (el.element->needsLiveBlurCached) {
-            willBlur      = true;
-            const auto BB = el.element->boundingBox(ctx);
-            RASSERT(BB, "No bounding box for an element with live blur is illegal");
-            blurRegion.add(*BB);
+            willBlur = true;
+            RASSERT(el.element->boundingBox(ctx), "No bounding box for an element with live blur is illegal");
+            blurRegion.add(el.element->liveBlurRegion(ctx));
         }
 
         if (el.element->needsPrecomputeBlurCached)

@@ -53,6 +53,10 @@ namespace Render {
             bool                          fitted = false;
             std::vector<SSolidGlassShape> shapes;
             CRegion                       clip; // where the blur has to be drawn: the outer shapes plus 1 px for antialiasing
+            // a few boxes covering everything the blur of this surface can show (clip, or the region extents if the
+            // region could not be fitted), logical px. Bounds the blur work: a staircase of region rects would cost
+            // one draw call per rect
+            CRegion bounds;
         };
 
         // nullptr if the surface has no declared region

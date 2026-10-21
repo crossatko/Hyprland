@@ -8,6 +8,11 @@ CRegion IPassElement::opaqueRegion(Render::CRenderContext& ctx) {
     return {};
 }
 
+CRegion IPassElement::liveBlurRegion(Render::CRenderContext& ctx) {
+    const auto BB = boundingBox(ctx);
+    return BB ? CRegion{*BB} : CRegion{};
+}
+
 bool IPassElement::disableSimplification(Render::CRenderContext& ctx) {
     return false;
 }

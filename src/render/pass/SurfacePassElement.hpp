@@ -62,6 +62,7 @@ class CSurfacePassElement : public IPassElement {
     virtual bool                needsPrecomputeBlur(Render::CRenderContext& ctx);
     virtual std::optional<CBox> boundingBox(Render::CRenderContext& ctx);
     virtual CRegion             opaqueRegion(Render::CRenderContext& ctx);
+    virtual CRegion             liveBlurRegion(Render::CRenderContext& ctx);
     virtual void                discard(Render::CRenderContext& ctx);
     CRegion                     visibleRegion(Render::CRenderContext& ctx, bool& cancel);
 

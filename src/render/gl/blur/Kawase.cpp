@@ -91,6 +91,8 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
 
     CRegion workingDamage{outputDamage};
     expandDamage(workingDamage);
+    // nothing outside the framebuffer is ever sampled
+    workingDamage.intersect(MONITORBOX);
 
     const auto MATERIAL_REQUIREMENTS   = m_material->requirements();
     const bool REQUIRES_PREPARED_INPUT = MATERIAL_REQUIREMENTS.preparedInput;

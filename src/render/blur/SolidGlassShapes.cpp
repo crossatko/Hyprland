@@ -291,6 +291,8 @@ const CSolidGlassShapeCache::SEntry* CSolidGlassShapeCache::get(const SP<Desktop
     } else
         it->clip = closeSolidGlassRegionGaps(it->region, 1.0);
 
+    it->bounds = it->fitted ? it->clip.copy() : CRegion{it->region.getExtents()}.expand(2.0);
+
     return &*it;
 }
 
