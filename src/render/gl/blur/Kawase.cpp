@@ -57,6 +57,10 @@ float CDualKawaseBlurProvider::damageRadius() const {
     static auto PBLURSIZE   = CConfigValue<Config::INTEGER>("decoration:blur:size");
     static auto PBLURPASSES = CConfigValue<Config::INTEGER>("decoration:blur:passes");
 
+    // without the passes (see blurGL) only the material's own taps reach out
+    if (m_material->requirements().preparedInput && !m_material->needsBlurredInput())
+        return m_material->sampleRadius();
+
     return dualKawaseDamageRadius(m_material->blurSizeForDamage(*PBLURSIZE), *PBLURPASSES) + m_material->sampleRadius();
 }
 
@@ -92,7 +96,7 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
     const auto MATERIAL_REQUIREMENTS   = m_material->requirements();
     const bool REQUIRES_PREPARED_INPUT = MATERIAL_REQUIREMENTS.preparedInput;
     // a material that reads only the prepared input this frame gets no dual kawase passes
-    const bool SKIP_PASSES = REQUIRES_PREPARED_INPUT && !m_material->needsBlurredInput(ctx);
+    const bool SKIP_PASSES = REQUIRES_PREPARED_INPUT && !m_material->needsBlurredInput();
 
     CRegion    workingDamage{outputDamage};
     if (SKIP_PASSES)

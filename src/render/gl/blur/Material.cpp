@@ -24,7 +24,7 @@ int64_t IGLBlurMaterial::blurSizeForDamage(int64_t size) const {
     return size;
 }
 
-bool IGLBlurMaterial::needsBlurredInput(CRenderContext& ctx) const {
+bool IGLBlurMaterial::needsBlurredInput() const {
     return true;
 }
 

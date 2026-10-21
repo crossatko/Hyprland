@@ -32,7 +32,7 @@ namespace Render::GL {
         virtual int64_t                   blurSizeForDamage(int64_t size) const;
         virtual float                     sampleRadius() const;
         // false if the finish shader reads only the prepared (sharp) input this frame: the dual kawase passes are skipped
-        virtual bool needsBlurredInput(CRenderContext& ctx) const;
+        virtual bool needsBlurredInput() const;
         void                              prepareForFrame(CRenderContext& ctx, const SBlurMaterialContext& context);
         virtual void                      prepare(CRenderContext& ctx, const SBlurMaterialContext& context);
         virtual void                      bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const;

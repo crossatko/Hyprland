@@ -15,7 +15,7 @@ namespace Render::GL {
         eBlurType                 type() const noexcept override;
         SBlurMaterialRequirements requirements() const noexcept override;
         float                     sampleRadius() const override;
-        bool                      needsBlurredInput(CRenderContext& ctx) const override;
+        bool                      needsBlurredInput() const override;
         void                      bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const override;
 
       private:

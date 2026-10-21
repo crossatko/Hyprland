@@ -11,6 +11,7 @@
 #include "../../blur/SolidGlassField.hpp"
 #include "../../blur/SolidGlassShapes.hpp"
 #include "BlurTiming.hpp"
+#include "../../../state/MonitorState.hpp"
 
 #include <drm_fourcc.h>
 
@@ -66,15 +67,33 @@ SBlurMaterialRequirements CSolidGlassBlurMaterial::requirements() const noexcept
     };
 }
 
+// how far from a glass pixel the finish samples the backdrop, device px: the largest lens bend the shader can produce
+// (refraction * depth, capped at 1.5 * bulb, see solidGlassOptics), stretched by the chromatic split, plus the frost
+// kernel and a px for bilinear filtering, at the largest monitor scale. Bounds the prepared backdrop and the damage
+// expansion for live blur
 float CSolidGlassBlurMaterial::sampleRadius() const {
     static auto PSOLIDGLASSREFRACTION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:refraction");
     static auto PSOLIDGLASSFROST      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:frost");
-    return solidGlassSampleRadius(*PSOLIDGLASSREFRACTION, *PSOLIDGLASSFROST);
+    static auto PSOLIDGLASSDEPTH      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:depth");
+    static auto PSOLIDGLASSBULB       = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:bulb");
+    static auto PSOLIDGLASSABERRATION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:aberration");
+
+    const auto  BEND  = std::min(std::clamp(*PSOLIDGLASSREFRACTION, 0.F, MAX_SOLIDGLASS_REFRACTION) * std::clamp(*PSOLIDGLASSDEPTH, 0.F, 3.F),
+                                 std::clamp(*PSOLIDGLASSBULB, MIN_SOLIDGLASS_BULB, MAX_SOLIDGLASS_BULB) * 1.5F);
+    const auto  FROST = std::clamp(*PSOLIDGLASSFROST, 0.F, MAX_SOLIDGLASS_FROST);
+    if (BEND <= 0.F && FROST <= 0.F)
+        return 0.F;
+
+    float scale = 1.F;
+    for (const auto& monitor : State::monitorState()->monitors())
+        scale = std::max(scale, sc<float>(monitor->m_scale));
+
+    return std::ceil((BEND * (1.F + std::clamp(*PSOLIDGLASSABERRATION, 0.F, 0.25F)) + FROST) * scale + 2.F);
 }
 
 // the finish mixes the dual kawase result in only with clarity < 1 (see solidglassfinish.frag). Otherwise it reads the
 // sharp prepared backdrop alone and the passes would be thrown away
-bool CSolidGlassBlurMaterial::needsBlurredInput(CRenderContext& ctx) const {
+bool CSolidGlassBlurMaterial::needsBlurredInput() const {
     static auto PSOLIDGLASSCLARITY = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:clarity");
     return std::clamp(*PSOLIDGLASSCLARITY, 0.F, 1.F) < 0.999F;
 }
