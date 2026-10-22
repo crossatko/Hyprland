@@ -209,7 +209,10 @@ CRegion CRenderPass::render(CRenderContext& ctx, const CRegion& damage_) {
         liveBlurRegion = blurRegion.copy();
         g_pHyprRenderer->expandBlurDamage(liveBlurRegion, 2.F);
 
-        blurRegion.intersect(m_damage);
+        // a live blur samples past its own box: damage within that reach changes it too
+        CRegion reachableDamage = m_damage.copy();
+        g_pHyprRenderer->expandBlurDamage(reachableDamage, 4.F);
+        blurRegion.intersect(reachableDamage);
         g_pHyprRenderer->expandBlurDamage(blurRegion);
 
         ctx.m_data.finalDamage = blurRegion.copy().add(m_damage);

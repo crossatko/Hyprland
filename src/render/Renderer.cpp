@@ -498,6 +498,33 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
         windows.emplace_back(w);
     }
 
+    // live blur only sees what is painted before it: windows using it are drawn after the other windows of their
+    // pass (tiled: the focused one last), so what their glass shows does not depend on focus or raise order
+    const bool LIVE_BLUR         = blurProviderRequiresLiveBlur();
+    const auto renderLiveBlurred = [&](bool floating) {
+        PHLWINDOW focused;
+        for (auto& w : windows) {
+            if (!w || w->isFloating() != floating || !w->shouldBlur() || (floating && (w->m_state & WINDOW_STATE_PINNED)))
+                continue;
+
+            const bool IGNORE_SPECIAL_CHECK = w->presentation().movingFromMonitor() && (w->m_workspace && !w->m_workspace->visible());
+            if ((!IGNORE_SPECIAL_CHECK && SPECIAL != w->onSpecialWorkspace()) || (floating && SPECIAL && w->m_monitor != pWorkspace->m_monitor))
+                continue;
+
+            if (!floating && w == Desktop::focusState()->window()) {
+                focused = w.lock();
+                continue;
+            }
+
+            renderWindow(ctx, w.lock(), pMonitor, w->presentation().renderPresentation(mode), time, true, floating ? RENDER_PASS_ALL : RENDER_PASS_MAIN);
+            if (!floating && mode == eSceneMode::MONITOR)
+                w.reset();
+        }
+
+        if (focused)
+            renderWindow(ctx, focused, pMonitor, focused->presentation().renderPresentation(mode), time, true, RENDER_PASS_MAIN);
+    };
+
     // Non-floating main
     for (auto& w : windows) {
         if (w->isFloating())
@@ -507,6 +534,9 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
         const bool IGNORE_SPECIAL_CHECK = w->presentation().movingFromMonitor() && (w->m_workspace && !w->m_workspace->visible());
 
         if (!IGNORE_SPECIAL_CHECK && SPECIAL != w->onSpecialWorkspace())
+            continue;
+
+        if (LIVE_BLUR && w->shouldBlur())
             continue;
 
         // render active window after all others of this pass
@@ -525,6 +555,9 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
         renderWindow(ctx, lastWindow, pMonitor, lastWindow->presentation().renderPresentation(mode), time, true, RENDER_PASS_MAIN);
 
     lastWindow.reset();
+
+    if (LIVE_BLUR)
+        renderLiveBlurred(false);
 
     renderFadeouts(ctx, pMonitor, Desktop::FADEOUT_PLANE_WINDOW_TILED, pWorkspace, mode);
 
@@ -564,9 +597,16 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
         if (SPECIAL && w->m_monitor != pWorkspace->m_monitor)
             continue; // special on another are rendered as a part of the base pass
 
+        if (LIVE_BLUR && w->shouldBlur())
+            continue;
+
         // render the bad boy
         renderWindow(ctx, w.lock(), pMonitor, w->presentation().renderPresentation(mode), time, true, RENDER_PASS_ALL);
     }
+
+    if (LIVE_BLUR)
+        renderLiveBlurred(true);
+
     renderFadeouts(ctx, pMonitor, Desktop::FADEOUT_PLANE_WINDOW_FLOATING, pWorkspace, mode);
 }
 
