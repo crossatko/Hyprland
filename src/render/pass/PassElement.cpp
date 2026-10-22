@@ -8,6 +8,12 @@ CRegion IPassElement::opaqueRegion(Render::CRenderContext& ctx) {
     return {};
 }
 
+// where a live blur of this element can be visible (monitor-local logical), defaults to the bounding box
+CRegion IPassElement::liveBlurRegion(Render::CRenderContext& ctx) {
+    const auto BB = boundingBox(ctx);
+    return BB ? CRegion{*BB} : CRegion{};
+}
+
 bool IPassElement::disableSimplification(Render::CRenderContext& ctx) {
     return false;
 }

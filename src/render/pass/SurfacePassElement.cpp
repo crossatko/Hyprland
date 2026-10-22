@@ -1,6 +1,7 @@
 #include "SurfacePassElement.hpp"
 #include "../OpenGL.hpp"
 #include "../../desktop/view/WLSurface.hpp"
+#include "../blur/SolidGlassShapes.hpp"
 #include "../../desktop/view/window/Window.hpp"
 #include "../../protocols/core/Compositor.hpp"
 #include "../../protocols/DRMSyncobj.hpp"
@@ -116,6 +117,24 @@ bool CSurfacePassElement::needsPrecomputeBlur(Render::CRenderContext& ctx) {
 
 std::optional<CBox> CSurfacePassElement::boundingBox(Render::CRenderContext& ctx) {
     return getTexBox();
+}
+
+// a surface with an ext-background-effect blur region shows its blur only there (the blur is clipped to it when
+// drawn), so damage expansion and occlusion only need to care about the region, not the whole surface (a fullscreen
+// popup layer with one glass card)
+CRegion CSurfacePassElement::liveBlurRegion(Render::CRenderContext& ctx) {
+    const auto  TEXBOX   = getTexBox();
+    const auto  PSURFACE = Desktop::View::CWLSurface::fromResource(m_data.surface);
+    const auto* GLASS    = PSURFACE ? Render::solidGlassShapeCache()->get(PSURFACE) : nullptr;
+    if (!GLASS || m_data.w <= 0 || m_data.h <= 0)
+        return CRegion{TEXBOX};
+
+    CRegion region = GLASS->bounds.copy();
+    region.scale(TEXBOX.size() / Vector2D{m_data.w, m_data.h});
+    region.translate(TEXBOX.pos());
+    // antialiased glass outlines reach a px past the shapes
+    region.expand(1);
+    return region.intersect(TEXBOX);
 }
 
 CRegion CSurfacePassElement::opaqueRegion(Render::CRenderContext& ctx) {
