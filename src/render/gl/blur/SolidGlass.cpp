@@ -324,3 +324,18 @@ void CSolidGlassBlurMaterial::bindFinish(CRenderContext& ctx, WP<CShader> shader
 float Render::GL::solidGlassDamageRadius(int64_t size, int64_t passes, float refraction, float frost) {
     return dualKawaseDamageRadius(size, passes) + solidGlassSampleRadius(refraction, frost);
 }
+
+void Render::GL::solidGlassMatteUV(const CBox& monitorBox, const Vector2D& monitorSize, const Vector2D& surfaceUVTopLeft, const Vector2D& surfaceUVBottomRight, Vector2D& scale,
+                                   Vector2D& offset) {
+    const Vector2D BG_TL  = monitorBox.pos() / monitorSize;
+    const Vector2D BG_BR  = (monitorBox.pos() + monitorBox.size()) / monitorSize;
+    const bool     HASUV  = surfaceUVTopLeft != Vector2D(-1, -1);
+    const Vector2D SUV_TL = HASUV ? surfaceUVTopLeft : Vector2D{0, 0};
+    const Vector2D SUV_BR = HASUV ? surfaceUVBottomRight : Vector2D{1, 1};
+    const Vector2D BGSIZE = BG_BR - BG_TL;
+    if (BGSIZE.x <= 0 || BGSIZE.y <= 0)
+        return;
+
+    scale  = (SUV_BR - SUV_TL) / BGSIZE;
+    offset = SUV_TL - BG_TL * scale;
+}
