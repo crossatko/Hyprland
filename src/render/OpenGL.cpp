@@ -983,6 +983,7 @@ const std::array<std::string, SH_FRAG_LAST> FRAG_SHADERS = {
     "acrylicfinish.frag",
     "aurorafinish.frag",
     "hazefinish.frag",
+    "solidglassfinish.frag",
 };
 
 bool CHyprOpenGLImpl::initShaders(const std::string& path) {
