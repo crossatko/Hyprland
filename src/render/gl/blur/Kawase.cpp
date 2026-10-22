@@ -56,6 +56,10 @@ float CDualKawaseBlurProvider::damageRadius() const {
     static auto PBLURSIZE   = CConfigValue<Config::INTEGER>("decoration:blur:size");
     static auto PBLURPASSES = CConfigValue<Config::INTEGER>("decoration:blur:passes");
 
+    // without the passes (see blurGL) only the material's own taps reach out
+    if (m_material->requirements().preparedInput && !m_material->needsBlurredInput())
+        return m_material->sampleRadius();
+
     return dualKawaseDamageRadius(m_material->blurSizeForDamage(*PBLURSIZE), *PBLURPASSES) + m_material->sampleRadius();
 }
 
@@ -93,6 +97,7 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
 
     const auto MATERIAL_REQUIREMENTS   = m_material->requirements();
     const bool REQUIRES_PREPARED_INPUT = MATERIAL_REQUIREMENTS.preparedInput;
+    const auto KAWASE_PASSES           = REQUIRES_PREPARED_INPUT && !m_material->needsBlurredInput() ? 0 : BLUR_PASSES;
 
     const auto PMIRRORFB     = dynamicPointerCast<CGLFramebuffer>(g_pHyprRenderer->getWorkBuffer(ctx));
     const auto PMIRRORSWAPFB = dynamicPointerCast<CGLFramebuffer>(g_pHyprRenderer->getWorkBuffer(ctx));
@@ -208,13 +213,13 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
     CRegion tempDamage{workingDamage};
 
     auto    shader = m_impl.useShader(m_impl.getShaderVariant(SH_FRAG_BLUR1));
-    for (auto i = 1; i <= BLUR_PASSES; ++i) {
+    for (auto i = 1; i <= KAWASE_PASSES; ++i) {
         tempDamage = workingDamage.copy().scale(1.f / (1 << i));
         drawPass(shader, SH_FRAG_BLUR1, &tempDamage);
     }
 
     shader = m_impl.useShader(m_impl.getShaderVariant(SH_FRAG_BLUR2));
-    for (auto i = BLUR_PASSES - 1; i >= 0; --i) {
+    for (auto i = KAWASE_PASSES - 1; i >= 0; --i) {
         tempDamage = workingDamage.copy().scale(1.f / (1 << i));
         drawPass(shader, SH_FRAG_BLUR2, &tempDamage);
     }
@@ -273,7 +278,8 @@ SP<CGLFramebuffer> CDualKawaseBlurProvider::blurGL(CRenderContext& ctx, SP<CGLFr
         glBindVertexArray(shader->getUniformLocation(SHADER_SHADER_VAO));
 
         if (!outputDamage.empty()) {
-            outputDamage.forEachRect([this, &ctx](const auto& RECT) {
+            outputDamage.forEachRect([this, &ctx, &shader](const auto& RECT) {
+                m_material->bindFinishRect(shader, CBox{sc<double>(RECT.x1), sc<double>(RECT.y1), sc<double>(RECT.x2 - RECT.x1), sc<double>(RECT.y2 - RECT.y1)});
                 m_impl.scissor(ctx, &RECT, false /* this region is already transformed */);
                 glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             });

@@ -76,6 +76,7 @@ namespace Render {
         SH_FRAG_ACRYLICFINISH,
         SH_FRAG_AURORAFINISH,
         SH_FRAG_HAZEFINISH,
+        SH_FRAG_SOLIDGLASSFINISH,
 
         SH_FRAG_LAST,
     };
