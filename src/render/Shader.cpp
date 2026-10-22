@@ -320,6 +320,10 @@ void CShader::getUniformLocations() {
     m_uniformLocations[SHADER_SOLIDGLASS_SHAPE_FIRST]        = getUniform("solidGlassShapeFirst");
     m_uniformLocations[SHADER_SOLIDGLASS_SHAPE_END]          = getUniform("solidGlassShapeEnd");
     m_uniformLocations[SHADER_SOLIDGLASS_SHAPES]             = getUniform("solidGlassShapes[0]");
+    m_uniformLocations[SHADER_SOLIDGLASS_MATTE]              = getUniform("glassAlphaMatte");
+    m_uniformLocations[SHADER_SOLIDGLASS_MATTE_UV_SCALE]     = getUniform("glassAlphaMatteUVScale");
+    m_uniformLocations[SHADER_SOLIDGLASS_MATTE_UV_OFFSET]    = getUniform("glassAlphaMatteUVOffset");
+    m_uniformLocations[SHADER_SOLIDGLASS_MATTE_REF]          = getUniform("glassAlphaMatteRef");
 }
 
 void CShader::createVao() {

@@ -60,6 +60,7 @@
 #include "ShaderLoader.hpp"
 #include "Texture.hpp"
 #include "blur/SolidGlassShapes.hpp"
+#include "gl/blur/SolidGlass.hpp"
 #include "gl/GLFramebuffer.hpp"
 #include "gl/GLTexture.hpp"
 
@@ -1495,6 +1496,9 @@ WP<CShader> CHyprOpenGLImpl::renderToFBInternal(CRenderContext& ctx, SP<ITexture
     if (data.forceBlurBlend)
         shaderFeatures |= SH_FEAT_BLUR_ALPHA_MASK;
 
+    if (data.glassMatte && data.glassMatteRef > 0.F)
+        shaderFeatures |= SH_FEAT_ALPHA_MATTE;
+
     if (data.motionBlur.enabled)
         shaderFeatures |= SH_FEAT_MOTION_BLUR;
 
@@ -1566,6 +1570,16 @@ WP<CShader> CHyprOpenGLImpl::renderToFBInternal(CRenderContext& ctx, SP<ITexture
 
         setActiveTexture(GL_TEXTURE0 + 2);
         data.blurAlphaMatte->bind();
+    }
+
+    if (shaderFeatures & SH_FEAT_ALPHA_MATTE) {
+        shader->setUniformInt(SHADER_SOLIDGLASS_MATTE, 3);
+        shader->setUniformFloat2(SHADER_SOLIDGLASS_MATTE_UV_SCALE, data.glassUVScale.x, data.glassUVScale.y);
+        shader->setUniformFloat2(SHADER_SOLIDGLASS_MATTE_UV_OFFSET, data.glassUVOffset.x, data.glassUVOffset.y);
+        shader->setUniformFloat(SHADER_SOLIDGLASS_MATTE_REF, data.glassMatteRef);
+
+        setActiveTexture(GL_TEXTURE0 + 3);
+        data.glassMatte->bind();
     }
 
     if (data.discardActive) {
@@ -1958,6 +1972,15 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
         if (!data.blockBlurOptimization)
             ctx.m_data.renderModif.enabled = false;
 
+        // solid_glass on a layer surface with a background-effect region: the glass follows the surface's own alpha
+        // (layer_alpha_ref > 0), so a client fading its card fades the glass too. Windows are untouched.
+        static auto PLAYERALPHAREF = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:layer_alpha_ref");
+        const bool  ALPHA_MATTE    = EFFECT_REGION && SOLID_GLASS && data.currentLS && *PLAYERALPHAREF > 0.F;
+        Vector2D    matteScale{1, 1}, matteOffset{0, 0};
+        if (ALPHA_MATTE)
+            solidGlassMatteUV(monitorSpaceBox, m_renderData.pMonitor->m_transformedSize, ctx.m_data.primarySurfaceUVTopLeft, ctx.m_data.primarySurfaceUVBottomRight, matteScale,
+                              matteOffset);
+
         renderTextureInternal(ctx, data.blurredBG, box,
                               STextureRenderData{
                                   .damage         = data.damage,
@@ -1976,6 +1999,11 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
 
                                   .primarySurfaceUVTopLeft     = monitorSpaceBox.pos() / m_renderData.pMonitor->m_transformedSize,
                                   .primarySurfaceUVBottomRight = (monitorSpaceBox.pos() + monitorSpaceBox.size()) / m_renderData.pMonitor->m_transformedSize,
+
+                                  .glassMatte    = ALPHA_MATTE ? tex : nullptr,
+                                  .glassUVScale  = matteScale,
+                                  .glassUVOffset = matteOffset,
+                                  .glassMatteRef = ALPHA_MATTE ? sc<float>(*PLAYERALPHAREF) : 0.F,
                               });
 
         ctx.m_data.renderModif.enabled = renderModif;

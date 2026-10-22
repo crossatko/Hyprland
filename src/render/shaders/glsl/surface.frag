@@ -16,6 +16,15 @@ uniform float     blurAlpha;
 #if USE_BLUR_MATTE
 uniform sampler2D blurAlphaMatte;
 #endif
+#if USE_ALPHA_MATTE
+// solid_glass on layers: the glass (drawn with this shader from blurredBG) is scaled by the layer surface's own alpha at
+// the same pixel, relative to glassAlphaMatteRef (decoration:blur:solid_glass:layer_alpha_ref), so a client fading its glass
+// card fades the glass with it
+uniform sampler2D glassAlphaMatte;
+uniform vec2      glassAlphaMatteUVScale;
+uniform vec2      glassAlphaMatteUVOffset;
+uniform float     glassAlphaMatteRef;
+#endif
 
 uniform float alpha;
 
@@ -179,6 +188,11 @@ void main() {
     float pixBlurBgAlpha  = (1.0 - pixColor.a) * pixBlurAlphaMask * blurredPixAlpha;
     pixColor += blurredPixColor * pixBlurBgAlpha;
 #endif
+#endif
+
+#if USE_ALPHA_MATTE
+    float matteA = clamp(texture(glassAlphaMatte, v_texcoord * glassAlphaMatteUVScale + glassAlphaMatteUVOffset).a / glassAlphaMatteRef, 0.0, 1.0);
+    pixColor *= matteA;
 #endif
 
     fragColor = pixColor;
