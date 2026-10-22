@@ -39,6 +39,7 @@ class IPassElement {
     virtual bool                undiscardable(Render::CRenderContext& ctx);
     virtual std::optional<CBox> boundingBox(Render::CRenderContext& ctx);  // in monitor-local logical coordinates
     virtual CRegion             opaqueRegion(Render::CRenderContext& ctx); // in monitor-local logical coordinates
+    virtual CRegion             liveBlurRegion(Render::CRenderContext& ctx);
     virtual bool                disableSimplification(Render::CRenderContext& ctx);
     virtual bool                requiresFullDamage(Render::CRenderContext& ctx);
 

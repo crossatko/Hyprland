@@ -59,6 +59,7 @@
 #include "./shaders/Shaders.hpp"
 #include "ShaderLoader.hpp"
 #include "Texture.hpp"
+#include "blur/SolidGlassShapes.hpp"
 #include "gl/GLFramebuffer.hpp"
 #include "gl/GLTexture.hpp"
 
@@ -1883,8 +1884,16 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
     TRACY_GPU_ZONE("RenderTextureWithBlur");
 
     static auto PPROPORTIONAL = CConfigValue<Config::INTEGER>("decoration:blur:proportional");
+    // solid_glass draws exactly the shapes of the ext-background-effect region, independent of the content's alpha:
+    // a blur ignore_alpha rule would otherwise hide the glass while a client fades its surface in (glass popping in)
+    static auto PBLURVARIANT   = CConfigValue<Config::INTEGER>("decoration:blur:variant");
+    const auto  PEFFECTSURFACE = Desktop::View::CWLSurface::fromResource(data.surface);
+    const bool  EFFECT_REGION  = PEFFECTSURFACE && PEFFECTSURFACE->m_hasBackgroundEffect && !PEFFECTSURFACE->m_blurRegion.empty();
+    const bool  SOLID_GLASS    = *PBLURVARIANT == sc<Config::INTEGER>(eBlurType::BLUR_SOLID_GLASS);
+    const auto  DISCARD_MODE   = EFFECT_REGION && SOLID_GLASS ? (data.discardMode & ~DISCARD_ALPHA) : data.discardMode;
+
     static auto PBLEND        = CConfigValue<Config::INTEGER>("render:use_shader_blur_blend");
-    const auto  NEEDS_STENCIL = data.discardMode != 0 && (!data.blockBlurOptimization || (data.discardMode & DISCARD_ALPHA));
+    const auto  NEEDS_STENCIL = DISCARD_MODE != 0 && (!data.blockBlurOptimization || (DISCARD_MODE & DISCARD_ALPHA));
     const bool  SHADERBLEND   = *PBLEND || data.forceBlurBlend;
     if (!SHADERBLEND && data.blurredBG) {
 
@@ -1911,7 +1920,7 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
                               .allowCustomUV               = true,
                               .wrapX                       = data.wrapX,
                               .wrapY                       = data.wrapY,
-                              .discardMode                 = data.discardMode,
+                              .discardMode                 = DISCARD_MODE,
                               .discardOpacity              = data.discardOpacity,
                               .clipRegion                  = data.clipRegion,
                               .currentLS                   = data.currentLS,
@@ -1935,7 +1944,10 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
         CRegion blurClipRegion = data.clipRegion;
         auto    PSURFACE       = Desktop::View::CWLSurface::fromResource(data.surface);
         if (PSURFACE && PSURFACE->m_hasBackgroundEffect && !PSURFACE->m_blurRegion.empty()) {
-            CRegion protocolBlur = PSURFACE->m_blurRegion.copy();
+            // solid_glass reads nested glass shapes from thin moats in the region, the blur has to cover them
+            // and its antialiased outlines reach up to 1 px past the rasterized region: clip to the fitted shapes instead
+            const auto* GLASS        = SOLID_GLASS ? solidGlassShapeCache()->get(PSURFACE) : nullptr;
+            CRegion     protocolBlur = GLASS ? GLASS->clip.copy() : PSURFACE->m_blurRegion.copy();
             protocolBlur.intersect(CBox{0, 0, box.width, box.height});
             protocolBlur.scale(m_renderData.pMonitor->m_scale);
             protocolBlur.translate(box.pos());
@@ -1961,7 +1973,7 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
                                   .noAA           = false,
                                   .wrapX          = data.wrapX,
                                   .wrapY          = data.wrapY,
-                                  .discardMode    = data.discardMode,
+                                  .discardMode    = DISCARD_MODE,
                                   .discardOpacity = data.discardOpacity,
                                   .clipRegion     = blurClipRegion,
                                   .currentLS      = data.currentLS,
@@ -1993,7 +2005,7 @@ void CHyprOpenGLImpl::renderTextureWithBlurInternal(CRenderContext& ctx, SP<ITex
                               .noAA             = false,
                               .wrapX            = data.wrapX,
                               .wrapY            = data.wrapY,
-                              .discardMode      = data.discardMode,
+                              .discardMode      = DISCARD_MODE,
                               .discardOpacity   = data.discardOpacity,
                               .clipRegion       = data.clipRegion,
                               .currentLS        = data.currentLS,
