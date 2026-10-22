@@ -177,6 +177,11 @@ namespace Render::GL {
             Vector2D               primarySurfaceUVBottomRight = Vector2D(-1, -1);
 
             SMotionBlurData        motionBlur;
+
+            SP<ITexture>           glassMatte; // solid_glass on layers: output *= clamp(glassMatte.a / glassMatteRef)
+            Vector2D               glassUVScale  = {1, 1};
+            Vector2D               glassUVOffset = {0, 0};
+            float                  glassMatteRef = 0.F;
         };
 
         struct SBorderRenderData {

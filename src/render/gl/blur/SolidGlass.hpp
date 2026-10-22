@@ -48,4 +48,9 @@ namespace Render::GL {
     };
 
     float solidGlassDamageRadius(int64_t size, int64_t passes, float refraction, float frost);
+
+    // layer_alpha_ref: the glass is drawn with UVs in monitor space (monitorBox / monitorSize), its matte samples the
+    // surface texture at the same pixel (surface UVs surfaceUVTopLeft..BottomRight, -1 = unset = the whole texture)
+    void solidGlassMatteUV(const CBox& monitorBox, const Vector2D& monitorSize, const Vector2D& surfaceUVTopLeft, const Vector2D& surfaceUVBottomRight, Vector2D& scale,
+                           Vector2D& offset);
 }
