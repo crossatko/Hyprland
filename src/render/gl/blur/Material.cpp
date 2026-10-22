@@ -24,6 +24,16 @@ int64_t IGLBlurMaterial::blurSizeForDamage(int64_t size) const {
     return size;
 }
 
+// called before each scissored draw of the finish, rect in the blur framebuffer (monitor device px)
+void IGLBlurMaterial::bindFinishRect(WP<CShader> shader, const CBox& rect) const {
+    ;
+}
+
+// false if the finish reads only the prepared (sharp) input this frame, the dual kawase passes are then skipped
+bool IGLBlurMaterial::needsBlurredInput() const {
+    return true;
+}
+
 float IGLBlurMaterial::sampleRadius() const {
     return 0.F;
 }

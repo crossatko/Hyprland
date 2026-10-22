@@ -34,6 +34,8 @@ namespace Render::GL {
         void                              prepareForFrame(CRenderContext& ctx, const SBlurMaterialContext& context);
         virtual void                      prepare(CRenderContext& ctx, const SBlurMaterialContext& context);
         virtual void                      bindFinish(CRenderContext& ctx, WP<CShader> shader, const SBlurMaterialContext& context) const;
+        virtual void                      bindFinishRect(WP<CShader> shader, const CBox& rect) const;
+        virtual bool                      needsBlurredInput() const;
 
       protected:
         IGLBlurMaterial() = default;
