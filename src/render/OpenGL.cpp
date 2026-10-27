@@ -1169,6 +1169,8 @@ void CHyprOpenGLImpl::renderRectWithBlurInternal(CRenderContext& ctx, const CBox
 
     CRegion damage{ctx.m_data.damage};
     damage.intersect(box);
+    if (data.blurHole)
+        damage.subtract(*data.blurHole);
 
     auto patternBox = data.blurPatternBox.value_or(box);
     ctx.m_data.renderModif.applyToBox(patternBox);

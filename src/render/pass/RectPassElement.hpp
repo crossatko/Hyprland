@@ -18,6 +18,7 @@ class CRectPassElement : public IPassElement {
         CBox                              clipBox;
         Render::SWindowRenderPresentation workspacePresentation;
         uint8_t                           blurRole = 0; // Render::eBlurRole
+        std::optional<CBox>               blurHole;     // not blurred (a ring around it is)
 
         // internal
         CBox    modifiedBox;
