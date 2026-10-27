@@ -1,7 +1,10 @@
 #include <config/values/ConfigValues.hpp>
 #include <desktop/rule/layerRule/LayerRuleEffectContainer.hpp>
 #include <desktop/rule/windowRule/WindowRuleEffectContainer.hpp>
+#include <render/blur/Provider.hpp>
 #include <render/blur/SolidGlassOverride.hpp>
+#include <render/pass/RectPassElement.hpp>
+#include <render/pass/TexPassElement.hpp>
 
 #include <gtest/gtest.h>
 
@@ -43,9 +46,8 @@ TEST(SolidGlassOverride, everyOptionNameIsAKey) {
         EXPECT_FALSE(OVERRIDE.empty()) << info.name;
 
         // the bounds match the global option
-        const auto VALUE = std::ranges::find_if(Config::Values::CONFIG_VALUES, [&info](const auto& value) {
-            return std::string_view{value->name()} == std::format("decoration:blur:solid_glass:{}", info.name);
-        });
+        const auto VALUE = std::ranges::find_if(Config::Values::CONFIG_VALUES,
+                                                [&info](const auto& value) { return std::string_view{value->name()} == std::format("decoration:blur:solid_glass:{}", info.name); });
         ASSERT_NE(VALUE, Config::Values::CONFIG_VALUES.end()) << info.name;
         const auto FLOAT_VALUE = dynamicPointerCast<Config::Values::CFloatValue>(*VALUE);
         ASSERT_TRUE(FLOAT_VALUE) << info.name;
@@ -127,10 +129,24 @@ TEST(SolidGlassOverride, ruleEffectsAreRegistered) {
 }
 
 TEST(SolidGlassOverride, perSurfaceProbeOption) {
-    const auto VALUE = std::ranges::find_if(Config::Values::CONFIG_VALUES,
-                                            [](const auto& value) { return std::string_view{value->name()} == "decoration:blur:solid_glass:per_surface"; });
+    const auto VALUE =
+        std::ranges::find_if(Config::Values::CONFIG_VALUES, [](const auto& value) { return std::string_view{value->name()} == "decoration:blur:solid_glass:per_surface"; });
     ASSERT_NE(VALUE, Config::Values::CONFIG_VALUES.end());
     const auto BOOL_VALUE = dynamicPointerCast<Config::Values::CBoolValue>(*VALUE);
     ASSERT_TRUE(BOOL_VALUE);
     EXPECT_TRUE(BOOL_VALUE->defaultVal());
+}
+
+TEST(SolidGlassOverride, groupbarOptionAndRole) {
+    const auto VALUE = std::ranges::find_if(Config::Values::CONFIG_VALUES, [](const auto& value) { return std::string_view{value->name()} == "group:groupbar:solid_glass"; });
+    ASSERT_NE(VALUE, Config::Values::CONFIG_VALUES.end());
+    const auto STRING_VALUE = dynamicPointerCast<Config::Values::CStringValue>(*VALUE);
+    ASSERT_TRUE(STRING_VALUE);
+    EXPECT_EQ(STRING_VALUE->defaultVal(), STRVAL_EMPTY);
+    EXPECT_EQ(STRING_VALUE->refreshBits(), Config::Supplementary::REFRESH_BLUR_FB);
+
+    // blurs are role-less unless a drawer says otherwise
+    EXPECT_EQ(SBlurShape{}.role, BLUR_ROLE_NONE);
+    EXPECT_EQ(CRectPassElement::SRectData{}.blurRole, BLUR_ROLE_NONE);
+    EXPECT_EQ(CTexPassElement::SRenderData{}.blurRole, BLUR_ROLE_NONE);
 }

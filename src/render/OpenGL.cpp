@@ -1180,6 +1180,7 @@ void CHyprOpenGLImpl::renderRectWithBlurInternal(CRenderContext& ctx, const CBox
             .box           = shapeBox,
             .radius        = std::max(sc<float>(data.round), 0.F),
             .roundingPower = data.roundingPower,
+            .role          = data.blurRole,
         };
     const bool usePrecomputedBlur = data.xray && !g_pHyprRenderer->blurProviderRequiresLiveBlur();
     const auto blurredFB          = usePrecomputedBlur ?
