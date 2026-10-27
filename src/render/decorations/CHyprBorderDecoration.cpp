@@ -9,6 +9,8 @@
 #include "../../managers/eventLoop/EventLoopManager.hpp"
 #include "../../managers/fullscreen/FullscreenController.hpp"
 #include "../pass/BorderPassElement.hpp"
+#include "../pass/RectPassElement.hpp"
+#include "../blur/SolidGlassOverride.hpp"
 #include "../Renderer.hpp"
 #include "../WindowRenderPresentation.hpp"
 #include "../../state/MonitorState.hpp"
@@ -86,6 +88,21 @@ void CHyprBorderDecoration::draw(Render::CRenderContext& ctx, PHLMONITOR pMonito
         data.grad1    = GRADIENT.previous;
         data.grad2    = GRADIENT.current;
         data.lerp     = GRADIENT.progress;
+    }
+
+    if (Render::solidGlassBorderWanted(m_window.lock())) {
+        CRectPassElement::SRectData glass;
+        glass.box                   = windowBox.copy().expand(borderSize * pMonitor->m_scale).round();
+        glass.color                 = CHyprColor(0, 0, 0, 0);
+        glass.round                 = OUTERROUND;
+        glass.roundingPower         = ROUNDINGPOWER;
+        glass.blur                  = true;
+        glass.blurA                 = a;
+        glass.blurOwner             = m_window;
+        glass.workspacePresentation = presentation;
+        glass.blurRole              = Render::BLUR_ROLE_BORDER;
+        glass.blurHole              = windowBox;
+        g_pHyprRenderer->addPassElement(ctx, makeUnique<CRectPassElement>(glass));
     }
 
     g_pHyprRenderer->addPassElement(ctx, makeUnique<CBorderPassElement>(data));

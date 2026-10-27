@@ -145,6 +145,7 @@ namespace Render::GL {
             PHLWINDOWREF                      blurOwner;
             Render::SWindowRenderPresentation workspacePresentation;
             uint8_t                           blurRole = 0; // Render::eBlurRole
+            std::optional<CBox>               blurHole;
         };
 
         struct STextureRenderData {

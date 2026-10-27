@@ -339,6 +339,8 @@ std::vector<SP<IValue>> Values::getConfigValues() {
                   "layers only: the glass of a layer surface follows the surface's own alpha at each pixel, full strength at this alpha "
                   "(e.g. the client's card fill alpha), so a client fading its card fades the glass. 0 = off (glass ignores the surface alpha)",
                   0.F, {.min = 0, .max = 1, .refresh = Supplementary::REFRESH_BLUR_FB}),
+        MS<String>("decoration:blur:solid_glass:border", "glass under window borders: empty = off, \"on\" or \"key:value ...\" overrides for it", "[[EMPTY]]",
+                   {.refresh = Supplementary::REFRESH_BLUR_FB}),
         MS<Bool>("decoration:blur:solid_glass:per_surface", "honor the \"glass\" layer / window rule (\"key:value ...\" overrides of these options for one surface)", true,
                  {.refresh = Supplementary::REFRESH_BLUR_FB}),
 
