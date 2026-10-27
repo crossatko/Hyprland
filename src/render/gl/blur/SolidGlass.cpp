@@ -10,6 +10,7 @@
 #include "../../Texture.hpp"
 #include "../../blur/SolidGlassField.hpp"
 #include "../../blur/SolidGlassShapes.hpp"
+#include "../../blur/SolidGlassOverride.hpp"
 #include "../../../state/MonitorState.hpp"
 
 #include <drm_fourcc.h>
@@ -22,8 +23,6 @@ using namespace Render::GL;
 using namespace NColorManagement;
 
 static constexpr float MAX_SOLIDGLASS_REFRACTION = 48.F;
-static constexpr float MIN_SOLIDGLASS_BULB       = 4.F;
-static constexpr float MAX_SOLIDGLASS_BULB       = 256.F;
 static constexpr float MAX_SOLIDGLASS_FROST      = 16.F;
 
 // refraction only samples inwards, frost samples around: both in logical px, padded for monitor scales up to 2
@@ -69,31 +68,76 @@ SBlurMaterialRequirements CSolidGlassBlurMaterial::requirements() const noexcept
 // (refraction * depth, capped at 1.5 * bulb, see solidGlassOptics), stretched by the chromatic split, plus the frost
 // kernel and a px for bilinear filtering, at the largest monitor scale. Bounds the prepared backdrop and the damage
 // expansion for live blur
-float CSolidGlassBlurMaterial::sampleRadius() const {
-    static auto PSOLIDGLASSREFRACTION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:refraction");
-    static auto PSOLIDGLASSFROST      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:frost");
-    static auto PSOLIDGLASSDEPTH      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:depth");
-    static auto PSOLIDGLASSBULB       = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:bulb");
-    static auto PSOLIDGLASSABERRATION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:aberration");
+// the global decoration:blur:solid_glass:* values, unclamped
+static SSolidGlassParams solidGlassGlobalParams() {
+    static auto       PREFRACTION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:refraction");
+    static auto       PBULB       = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:bulb");
+    static auto       PCLARITY    = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:clarity");
+    static auto       PABERRATION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:aberration");
+    static auto       PTINT       = CConfigValue<Config::INTEGER>("decoration:blur:solid_glass:tint");
+    static auto       PDEPTH      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:depth");
+    static auto       PEDGECURVE  = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:edge_curve");
+    static auto       PLIGHTANGLE = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:light_angle");
+    static auto       PSPECINT    = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:specular_intensity");
+    static auto       PSPECPOWER  = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:specular_power");
+    static auto       PSHEEN      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:sheen");
+    static auto       PSATURATION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:saturation");
+    static auto       PFROST      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:frost");
+    static auto       PDARKENING  = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:darkening");
 
-    const auto  BEND  = std::min(std::clamp(*PSOLIDGLASSREFRACTION, 0.F, MAX_SOLIDGLASS_REFRACTION) * std::clamp(*PSOLIDGLASSDEPTH, 0.F, 3.F),
-                                 std::clamp(*PSOLIDGLASSBULB, MIN_SOLIDGLASS_BULB, MAX_SOLIDGLASS_BULB) * 1.5F);
-    const auto  FROST = std::clamp(*PSOLIDGLASSFROST, 0.F, MAX_SOLIDGLASS_FROST);
-    if (BEND <= 0.F && FROST <= 0.F)
+    SSolidGlassParams params;
+    params.values[SOLIDGLASS_REFRACTION]         = *PREFRACTION;
+    params.values[SOLIDGLASS_BULB]               = *PBULB;
+    params.values[SOLIDGLASS_CLARITY]            = *PCLARITY;
+    params.values[SOLIDGLASS_ABERRATION]         = *PABERRATION;
+    params.values[SOLIDGLASS_DEPTH]              = *PDEPTH;
+    params.values[SOLIDGLASS_EDGE_CURVE]         = *PEDGECURVE;
+    params.values[SOLIDGLASS_LIGHT_ANGLE]        = *PLIGHTANGLE;
+    params.values[SOLIDGLASS_SPECULAR_INTENSITY] = *PSPECINT;
+    params.values[SOLIDGLASS_SPECULAR_POWER]     = *PSPECPOWER;
+    params.values[SOLIDGLASS_SHEEN]              = *PSHEEN;
+    params.values[SOLIDGLASS_SATURATION]         = *PSATURATION;
+    params.values[SOLIDGLASS_FROST]              = *PFROST;
+    params.values[SOLIDGLASS_DARKENING]          = *PDARKENING;
+    params.tint                                  = *PTINT;
+    return params;
+}
+
+// logical px a glass with these values reaches out from a pixel (before the monitor scale)
+static float solidGlassReach(const SSolidGlassParams& params) {
+    const auto P    = clampSolidGlassParams(params);
+    const auto BEND = std::min(P.values[SOLIDGLASS_REFRACTION] * P.values[SOLIDGLASS_DEPTH], P.values[SOLIDGLASS_BULB] * 1.5F);
+    if (BEND <= 0.F && P.values[SOLIDGLASS_FROST] <= 0.F)
+        return 0.F;
+    return BEND * (1.F + P.values[SOLIDGLASS_ABERRATION]) + P.values[SOLIDGLASS_FROST];
+}
+
+float CSolidGlassBlurMaterial::sampleRadius() const {
+    // per-surface overrides may reach further than the globals: the prepared backdrop and the damage expansion
+    // are shared by every glass of the frame, so they cover the largest
+    const auto GLOBALS = solidGlassGlobalParams();
+    float      reach   = solidGlassReach(GLOBALS);
+    for (const auto& override : cachedSolidGlassOverrides()) {
+        reach = std::max(reach, solidGlassReach(override->applyTo(GLOBALS)));
+    }
+    if (reach <= 0.F)
         return 0.F;
 
     float scale = 1.F;
     for (const auto& monitor : State::monitorState()->monitors())
         scale = std::max(scale, sc<float>(monitor->m_scale));
 
-    return std::ceil((BEND * (1.F + std::clamp(*PSOLIDGLASSABERRATION, 0.F, 0.25F)) + FROST) * scale + 2.F);
+    return std::ceil(reach * scale + 2.F);
 }
 
 // the finish mixes the dual kawase result in only with clarity < 1 (see solidglassfinish.frag). Otherwise it reads the
 // sharp prepared backdrop alone and the passes would be thrown away
 bool CSolidGlassBlurMaterial::needsBlurredInput() const {
-    static auto PSOLIDGLASSCLARITY = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:clarity");
-    return std::clamp(*PSOLIDGLASSCLARITY, 0.F, 1.F) < 0.999F;
+    const auto GLOBALS      = solidGlassGlobalParams();
+    const auto NEEDS_BLURRY = [](const SSolidGlassParams& params) { return clampSolidGlassParams(params).values[SOLIDGLASS_CLARITY] < 0.999F; };
+    if (NEEDS_BLURRY(GLOBALS))
+        return true;
+    return std::ranges::any_of(cachedSolidGlassOverrides(), [&](const auto& override) { return NEEDS_BLURRY(override->applyTo(GLOBALS)); });
 }
 
 static constexpr float MASK_ALPHA_THRESHOLD = 0.04F;
@@ -227,30 +271,21 @@ void CSolidGlassBlurMaterial::bindFinish(CRenderContext& ctx, WP<CShader> shader
     if (extent.width <= 0 || extent.height <= 0)
         return;
 
-    static auto PSOLIDGLASSREFRACTION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:refraction");
-    static auto PSOLIDGLASSBULB       = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:bulb");
-    static auto PSOLIDGLASSCLARITY    = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:clarity");
-    static auto PSOLIDGLASSABERRATION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:aberration");
-    static auto PSOLIDGLASSTINT       = CConfigValue<Config::INTEGER>("decoration:blur:solid_glass:tint");
-    static auto PSOLIDGLASSDEPTH      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:depth");
-    static auto PSOLIDGLASSEDGECURVE  = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:edge_curve");
-    static auto PSOLIDGLASSLIGHTANGLE = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:light_angle");
-    static auto PSOLIDGLASSSPECINT    = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:specular_intensity");
-    static auto PSOLIDGLASSSPECPOWER  = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:specular_power");
-    static auto PSOLIDGLASSSHEEN      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:sheen");
-    static auto PSOLIDGLASSSATURATION = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:saturation");
-    static auto PSOLIDGLASSFROST      = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:frost");
-    static auto PSOLIDGLASSDARKENING  = CConfigValue<Config::FLOAT>("decoration:blur:solid_glass:darkening");
+    // a per-surface override replaces the globals it names
+    const auto OVERRIDE = solidGlassOverrideFor(context.blurContext);
+    const auto GLOBALS  = solidGlassGlobalParams();
+    const auto PARAMS   = clampSolidGlassParams(OVERRIDE ? OVERRIDE->applyTo(GLOBALS) : GLOBALS);
+    const auto VALUE    = [&PARAMS](eSolidGlassParam param) { return PARAMS.values[param]; };
 
-    const auto  TINT            = CHyprColor(*PSOLIDGLASSTINT);
-    const auto  TINT_ALPHA      = std::clamp(sc<float>(TINT.a), 0.F, 1.F);
-    const auto  TINT_DEPTH      = -std::log(std::max(1.F - TINT_ALPHA, 0.0001F));
-    const auto  LUMINANCE_SCALE = solidGlassLuminanceScale(ctx);
-    const auto  LIGHT_ANGLE_RAD = *PSOLIDGLASSLIGHTANGLE * (M_PI / 180.0);
+    const auto TINT            = CHyprColor(PARAMS.tint);
+    const auto TINT_ALPHA      = std::clamp(sc<float>(TINT.a), 0.F, 1.F);
+    const auto TINT_DEPTH      = -std::log(std::max(1.F - TINT_ALPHA, 0.0001F));
+    const auto LUMINANCE_SCALE = solidGlassLuminanceScale(ctx);
+    const auto LIGHT_ANGLE_RAD = VALUE(SOLIDGLASS_LIGHT_ANGLE) * (M_PI / 180.0);
 
     // sizes are configured in logical px
     const auto SCALE   = sc<float>(ctx.m_data.pMonitor->m_scale);
-    const auto BULB_PX = std::clamp(*PSOLIDGLASSBULB, MIN_SOLIDGLASS_BULB, MAX_SOLIDGLASS_BULB) * SCALE;
+    const auto BULB_PX = VALUE(SOLIDGLASS_BULB) * SCALE;
 
     shader->setUniformInt(SHADER_SOLIDGLASS_ENABLED, 1);
 
@@ -300,25 +335,25 @@ void CSolidGlassBlurMaterial::bindFinish(CRenderContext& ctx, WP<CShader> shader
     shader->setUniformFloat4(SHADER_SOLIDGLASS_EXTENT, sc<float>(extent.x), sc<float>(extent.y), sc<float>(extent.width), sc<float>(extent.height));
     shader->setUniformFloat(SHADER_SOLIDGLASS_RADIUS, std::max(context.blurContext.shape->radius, 0.F));
     shader->setUniformFloat(SHADER_SOLIDGLASS_ROUNDING_POWER, std::max(context.blurContext.shape->roundingPower, 1.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_REFRACTION, std::clamp(*PSOLIDGLASSREFRACTION, 0.F, MAX_SOLIDGLASS_REFRACTION) * SCALE);
+    shader->setUniformFloat(SHADER_SOLIDGLASS_REFRACTION, VALUE(SOLIDGLASS_REFRACTION) * SCALE);
     shader->setUniformFloat(SHADER_SOLIDGLASS_BULB, BULB_PX);
-    shader->setUniformFloat(SHADER_SOLIDGLASS_CLARITY, std::clamp(*PSOLIDGLASSCLARITY, 0.F, 1.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_ABERRATION, std::clamp(*PSOLIDGLASSABERRATION, 0.F, 0.25F));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_CLARITY, VALUE(SOLIDGLASS_CLARITY));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_ABERRATION, VALUE(SOLIDGLASS_ABERRATION));
     shader->setUniformFloat4(SHADER_SOLIDGLASS_TINT, srgbToLinear(sc<float>(TINT.r)) * LUMINANCE_SCALE, srgbToLinear(sc<float>(TINT.g)) * LUMINANCE_SCALE,
                              srgbToLinear(sc<float>(TINT.b)) * LUMINANCE_SCALE, TINT_DEPTH);
     shader->setUniformFloat(SHADER_SOLIDGLASS_STRENGTH, std::clamp(context.strength, 0.F, 1.F));
     shader->setUniformInt(SHADER_SOLIDGLASS_TRANSFER_FUNCTION, sc<int>(getDefaultImageDescription()->value().transferFunction));
     shader->setUniformFloat(SHADER_SOLIDGLASS_LUMINANCE_SCALE, LUMINANCE_SCALE);
-    shader->setUniformFloat(SHADER_SOLIDGLASS_DEPTH, std::clamp(*PSOLIDGLASSDEPTH, 0.F, 3.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_EDGE_CURVE, std::clamp(*PSOLIDGLASSEDGECURVE, 0.2F, 5.F));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_DEPTH, VALUE(SOLIDGLASS_DEPTH));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_EDGE_CURVE, VALUE(SOLIDGLASS_EDGE_CURVE));
     // the blur framebuffer is y-down, the configured angle counts counter-clockwise from the right (90 = up)
     shader->setUniformFloat2(SHADER_SOLIDGLASS_LIGHT_DIR, sc<float>(std::cos(LIGHT_ANGLE_RAD)), -sc<float>(std::sin(LIGHT_ANGLE_RAD)));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_SPECULAR_INTENSITY, std::clamp(*PSOLIDGLASSSPECINT, 0.F, 3.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_SPECULAR_POWER, std::clamp(*PSOLIDGLASSSPECPOWER, 1.F, 200.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_SHEEN, std::clamp(*PSOLIDGLASSSHEEN, 0.F, 1.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_SATURATION, std::clamp(*PSOLIDGLASSSATURATION, 0.F, 3.F));
-    shader->setUniformFloat(SHADER_SOLIDGLASS_FROST, std::clamp(*PSOLIDGLASSFROST, 0.F, MAX_SOLIDGLASS_FROST) * SCALE);
-    shader->setUniformFloat(SHADER_SOLIDGLASS_DARKENING, std::clamp(*PSOLIDGLASSDARKENING, 0.F, 1.F));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_SPECULAR_INTENSITY, VALUE(SOLIDGLASS_SPECULAR_INTENSITY));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_SPECULAR_POWER, VALUE(SOLIDGLASS_SPECULAR_POWER));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_SHEEN, VALUE(SOLIDGLASS_SHEEN));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_SATURATION, VALUE(SOLIDGLASS_SATURATION));
+    shader->setUniformFloat(SHADER_SOLIDGLASS_FROST, VALUE(SOLIDGLASS_FROST) * SCALE);
+    shader->setUniformFloat(SHADER_SOLIDGLASS_DARKENING, VALUE(SOLIDGLASS_DARKENING));
 }
 
 float Render::GL::solidGlassDamageRadius(int64_t size, int64_t passes, float refraction, float frost) {

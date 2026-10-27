@@ -3,6 +3,7 @@
 #include "lua/ConfigManager.hpp"
 #include "../debug/log/Logger.hpp"
 #include "values/ConfigValues.hpp"
+#include "../render/blur/SolidGlassOverride.hpp"
 
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
@@ -15,6 +16,8 @@ static UP<IConfigManager> g_mgr;
 bool Config::initConfigManager() {
     if (mgr())
         return true;
+
+    Render::registerSolidGlassRuleEffects(); // the "glass" rule effect must exist before rules are parsed
 
     // run this bitch
     const auto CFG_PATH = Supplementary::Jeremy::getMainConfigPath();
