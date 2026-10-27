@@ -61,7 +61,8 @@ void CGLElementRenderer::draw(CRenderContext& ctx, WP<CRectPassElement> element,
                                    .xray                  = m_data.xray,
                                    .blurPatternBox        = m_data.blurPatternBox,
                                    .blurOwner             = m_data.blurOwner,
-                                   .workspacePresentation = m_data.workspacePresentation});
+                                   .workspacePresentation = m_data.workspacePresentation,
+                                   .blurRole              = m_data.blurRole});
 };
 
 void CGLElementRenderer::draw(CRenderContext& ctx, WP<CShadowPassElement> element, const CRegion& damage) {

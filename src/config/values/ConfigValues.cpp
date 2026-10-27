@@ -594,6 +594,8 @@ std::vector<SP<IValue>> Values::getConfigValues() {
         MS<Int>("group:groupbar:text_offset", "set an offset for a text", 0, {.min = -20, .max = 20}),
         MS<Int>("group:groupbar:text_padding", "set horizontal padding for a text", 0, {.min = 0, .max = 22}),
         MS<Bool>("group:groupbar:blur", "enable background blur for groupbars", false),
+        MS<String>("group:groupbar:solid_glass", "solid_glass overrides for the groupbar tabs, same \"key:value ...\" format as the glass rule", "[[EMPTY]]",
+                   {.refresh = Supplementary::REFRESH_BLUR_FB}),
 
         /*
          * misc:

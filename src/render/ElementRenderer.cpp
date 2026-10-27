@@ -539,6 +539,7 @@ void IElementRenderer::drawTex(CRenderContext& ctx, WP<CTexPassElement> element,
                         .box           = shapeBox,
                         .radius        = std::max(sc<float>(element->m_data.round), 0.F),
                         .roundingPower = element->m_data.roundingPower,
+                        .role          = element->m_data.blurRole,
                     };
             }
 

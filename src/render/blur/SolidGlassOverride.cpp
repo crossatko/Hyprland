@@ -217,6 +217,12 @@ SP<const SSolidGlassOverride> Render::solidGlassOverrideFor(const SBlurContext& 
     if (!*PPERSURFACE)
         return nullptr;
 
+    if (context.shape && context.shape->role == BLUR_ROLE_GROUPBAR) {
+        static auto PGROUPBAR = CConfigValue<Config::STRING>("group:groupbar:solid_glass");
+        const auto& SPEC      = *PGROUPBAR;
+        return SPEC.empty() || SPEC == STRVAL_EMPTY ? nullptr : cachedSolidGlassOverride(SPEC);
+    }
+
     std::optional<std::string> spec;
     if (context.shape) {
         if (const auto SURFACE = context.shape->surface.lock(); SURFACE)

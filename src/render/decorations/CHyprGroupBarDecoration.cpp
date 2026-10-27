@@ -178,6 +178,7 @@ void CHyprGroupBarDecoration::draw(Render::CRenderContext& ctx, PHLMONITOR pMoni
             rectdata.blur                  = blur;
             rectdata.box                   = rect;
             rectdata.workspacePresentation = presentation;
+            rectdata.blurRole              = Render::BLUR_ROLE_GROUPBAR;
             if (*PROUNDING) {
                 rectdata.round         = *PROUNDING;
                 rectdata.roundingPower = *PROUNDINGPOWER;
@@ -214,6 +215,7 @@ void CHyprGroupBarDecoration::draw(Render::CRenderContext& ctx, PHLMONITOR pMoni
                     data.box                   = rect;
                     data.a                     = a;
                     data.workspacePresentation = presentation;
+                    data.blurRole              = Render::BLUR_ROLE_GROUPBAR;
                     if (*PGRADIENTROUNDING) {
                         data.round         = *PGRADIENTROUNDING;
                         data.roundingPower = *PGRADIENTROUNDINGPOWER;
