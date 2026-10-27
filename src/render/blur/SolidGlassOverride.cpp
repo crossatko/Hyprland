@@ -182,12 +182,16 @@ const std::vector<SP<const SSolidGlassOverride>>& Render::cachedSolidGlassOverri
     return overrideCache().parsed;
 }
 
-static Desktop::Rule::CLayerRuleEffectContainer::storageType  g_layerGlassEffect  = 0;
-static Desktop::Rule::CWindowRuleEffectContainer::storageType g_windowGlassEffect = 0;
+static Desktop::Rule::CLayerRuleEffectContainer::storageType  g_layerGlassEffect        = 0;
+static Desktop::Rule::CWindowRuleEffectContainer::storageType g_windowGlassEffect       = 0;
+static Desktop::Rule::CWindowRuleEffectContainer::storageType g_windowGlassBorderEffect = 0;
+
+static constexpr std::string_view                             GLASS_BORDER_RULE_EFFECT = "glass_border";
 
 void                                                          Render::registerSolidGlassRuleEffects() {
-    g_layerGlassEffect  = Desktop::Rule::layerEffects()->registerEffect(std::string{GLASS_RULE_EFFECT});
-    g_windowGlassEffect = Desktop::Rule::windowEffects()->registerEffect(std::string{GLASS_RULE_EFFECT});
+    g_layerGlassEffect        = Desktop::Rule::layerEffects()->registerEffect(std::string{GLASS_RULE_EFFECT});
+    g_windowGlassEffect       = Desktop::Rule::windowEffects()->registerEffect(std::string{GLASS_RULE_EFFECT});
+    g_windowGlassBorderEffect = Desktop::Rule::windowEffects()->registerEffect(std::string{GLASS_BORDER_RULE_EFFECT});
 }
 
 std::optional<std::string> Render::solidGlassLayerRule(PHLLS layer) {
@@ -201,21 +205,47 @@ std::optional<std::string> Render::solidGlassLayerRule(PHLLS layer) {
     return IT->second->effect;
 }
 
-std::optional<std::string> Render::solidGlassWindowRule(PHLWINDOW window) {
-    if (!window || !window->m_ruleApplicator || !g_windowGlassEffect)
+static std::optional<std::string> windowRuleEffect(PHLWINDOW window, Desktop::Rule::CWindowRuleEffectContainer::storageType effect) {
+    if (!window || !window->m_ruleApplicator || !effect)
         return std::nullopt;
 
     const auto& PROPS = window->m_ruleApplicator->m_otherProps.props;
-    const auto  IT    = PROPS.find(g_windowGlassEffect);
+    const auto  IT    = PROPS.find(effect);
     if (IT == PROPS.end() || !IT->second)
         return std::nullopt;
     return IT->second->effect;
+}
+
+std::optional<std::string> Render::solidGlassWindowRule(PHLWINDOW window) {
+    return windowRuleEffect(window, g_windowGlassEffect);
+}
+
+// the border glass spec: the window rule wins over the option; "" / "off" = no glass, "on" = glass without overrides
+static std::optional<std::string> borderSpec(PHLWINDOW window) {
+    static auto PBORDER = CConfigValue<Config::STRING>("decoration:blur:solid_glass:border");
+    auto        spec    = windowRuleEffect(window, g_windowGlassBorderEffect);
+    if (!spec)
+        spec = *PBORDER;
+    if (spec->empty() || *spec == STRVAL_EMPTY || *spec == "off" || *spec == "0" || *spec == "false")
+        return std::nullopt;
+    return spec;
+}
+
+bool Render::solidGlassBorderWanted(PHLWINDOW window) {
+    static auto PENABLED = CConfigValue<Config::BOOL>("decoration:blur:enabled");
+    static auto PVARIANT = CConfigValue<Config::INTEGER>("decoration:blur:variant");
+    return *PENABLED && *PVARIANT == sc<Config::INTEGER>(eBlurType::BLUR_SOLID_GLASS) && window && borderSpec(window).has_value();
 }
 
 SP<const SSolidGlassOverride> Render::solidGlassOverrideFor(const SBlurContext& context) {
     static auto PPERSURFACE = CConfigValue<Config::BOOL>("decoration:blur:solid_glass:per_surface");
     if (!*PPERSURFACE)
         return nullptr;
+
+    if (context.shape && context.shape->role == BLUR_ROLE_BORDER) {
+        const auto SPEC = borderSpec(context.owner.lock());
+        return !SPEC || *SPEC == "on" || *SPEC == "1" || *SPEC == "true" ? nullptr : cachedSolidGlassOverride(*SPEC);
+    }
 
     if (context.shape && context.shape->role == BLUR_ROLE_GROUPBAR) {
         static auto PGROUPBAR = CConfigValue<Config::STRING>("group:groupbar:solid_glass");

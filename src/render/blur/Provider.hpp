@@ -32,6 +32,7 @@ namespace Render {
     enum eBlurRole : uint8_t {
         BLUR_ROLE_NONE     = 0,
         BLUR_ROLE_GROUPBAR = 1,
+        BLUR_ROLE_BORDER   = 2,
     };
 
     struct SBlurContext {

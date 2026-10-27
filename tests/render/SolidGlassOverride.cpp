@@ -150,3 +150,19 @@ TEST(SolidGlassOverride, groupbarOptionAndRole) {
     EXPECT_EQ(CRectPassElement::SRectData{}.blurRole, BLUR_ROLE_NONE);
     EXPECT_EQ(CTexPassElement::SRenderData{}.blurRole, BLUR_ROLE_NONE);
 }
+
+TEST(SolidGlassOverride, borderGlassOptionAndRule) {
+    registerSolidGlassRuleEffects();
+    const auto EFFECT = Desktop::Rule::windowEffects()->get("glass_border");
+    ASSERT_TRUE(EFFECT.has_value());
+    EXPECT_TRUE(Desktop::Rule::windowEffects()->isEffectDynamic(*EFFECT));
+    EXPECT_FALSE(Desktop::Rule::layerEffects()->get("glass_border").has_value());
+
+    const auto VALUE =
+        std::ranges::find_if(Config::Values::CONFIG_VALUES, [](const auto& value) { return std::string_view{value->name()} == "decoration:blur:solid_glass:border"; });
+    ASSERT_NE(VALUE, Config::Values::CONFIG_VALUES.end());
+    const auto STRING_VALUE = dynamicPointerCast<Config::Values::CStringValue>(*VALUE);
+    ASSERT_TRUE(STRING_VALUE);
+    EXPECT_EQ(STRING_VALUE->defaultVal(), STRVAL_EMPTY);
+    EXPECT_FALSE(CRectPassElement::SRectData{}.blurHole.has_value());
+}

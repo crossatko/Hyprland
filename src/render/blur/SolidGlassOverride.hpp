@@ -73,6 +73,10 @@ namespace Render {
     // the "glass" rule string of the layer / window, if a rule set one
     std::optional<std::string> solidGlassLayerRule(PHLLS layer);
     std::optional<std::string> solidGlassWindowRule(PHLWINDOW window);
+    // window-frame glass (decoration:blur:solid_glass:border or the glass_border window rule): whether the border
+    // decoration of this window draws glass under its ring
+    bool solidGlassBorderWanted(PHLWINDOW window);
+
     // the override a blur draw uses: group:groupbar:solid_glass for groupbar tabs, else the layer rule of its surface,
     // else the window rule of its owner, else none
     SP<const SSolidGlassOverride> solidGlassOverrideFor(const SBlurContext& context);
