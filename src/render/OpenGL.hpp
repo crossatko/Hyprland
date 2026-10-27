@@ -144,6 +144,7 @@ namespace Render::GL {
             std::optional<CBox>               blurPatternBox;
             PHLWINDOWREF                      blurOwner;
             Render::SWindowRenderPresentation workspacePresentation;
+            uint8_t                           blurRole = 0; // Render::eBlurRole
         };
 
         struct STextureRenderData {

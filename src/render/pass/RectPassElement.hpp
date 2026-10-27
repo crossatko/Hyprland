@@ -17,6 +17,7 @@ class CRectPassElement : public IPassElement {
         PHLWINDOWREF                      blurOwner;
         CBox                              clipBox;
         Render::SWindowRenderPresentation workspacePresentation;
+        uint8_t                           blurRole = 0; // Render::eBlurRole
 
         // internal
         CBox    modifiedBox;

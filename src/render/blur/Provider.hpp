@@ -25,6 +25,13 @@ namespace Render {
         WP<Desktop::View::CWLSurface> surface;
         float                         surfaceScale   = 1.F;
         float                         alphaThreshold = 0.F;
+        uint8_t                       role           = 0; // eBlurRole
+    };
+
+    // what a blur is drawn for, when a material styles it differently (solid_glass: group:groupbar:solid_glass)
+    enum eBlurRole : uint8_t {
+        BLUR_ROLE_NONE     = 0,
+        BLUR_ROLE_GROUPBAR = 1,
     };
 
     struct SBlurContext {

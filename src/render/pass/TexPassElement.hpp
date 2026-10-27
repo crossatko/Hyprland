@@ -71,6 +71,7 @@ class CTexPassElement : public IPassElement {
         SMotionBlurData                   motionBlur;
         bool                              blurShapeInvalid = false;
         Render::SWindowRenderPresentation workspacePresentation;
+        uint8_t                           blurRole = 0; // Render::eBlurRole
     };
 
     CTexPassElement(const SRenderData& data);
