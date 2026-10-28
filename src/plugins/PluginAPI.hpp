@@ -28,6 +28,7 @@ Feel like the API is missing something you'd like to use in your plugin? Open an
 #include "../version.h"
 #include "../config/values/types/IValue.hpp"
 #include "../event/EventBus.hpp"
+#include "../render/blur/Provider.hpp"
 
 #include <any>
 #include <format>
@@ -70,6 +71,10 @@ struct SVersionInfo {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 #endif
+
+namespace Render {
+    class IBlurProvider;
+}
 
 class IHyprLayout;
 class IHyprWindowDecoration;
@@ -378,6 +383,28 @@ namespace HyprlandAPI {
         returns: true on success. False otherwise.
     */
     APICALL bool removeEvent(HANDLE handle, const std::string& name);
+
+    /*
+        Register a blur provider under a name. Users select it with `decoration:blur:provider = <name>`;
+        it takes precedence over `decoration:blur:variant` while it is registered.
+
+        The factory is called by the renderer whenever the provider is (re)selected. Providers are expected to
+        implement Render::IBlurProvider (for GL, Render::GL::IGLBlurProvider or a subclass of CDualKawaseBlurProvider
+        with a custom IGLBlurMaterial) and should report Render::eBlurType::BLUR_PLUGIN from type().
+
+        Names are unique. If the provider is unregistered or the plugin unloaded, Hyprland falls back to the
+        configured variant before the plugin code is unmapped.
+
+        returns: true on success. False otherwise (empty name, null factory, name already taken).
+    */
+    APICALL bool registerBlurProvider(HANDLE handle, const std::string& name, std::function<UP<Render::IBlurProvider>()>&& factory);
+
+    /*
+        Unregister a blur provider previously registered by this plugin.
+
+        returns: true on success. False otherwise.
+    */
+    APICALL bool unregisterBlurProvider(HANDLE handle, const std::string& name);
 
 };
 

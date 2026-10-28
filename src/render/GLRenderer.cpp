@@ -1,4 +1,5 @@
 #include "GLRenderer.hpp"
+#include "blur/Registry.hpp"
 #include "decorations/CHyprInnerGlowDecoration.hpp"
 #include <aquamarine/output/Output.hpp>
 #include "../config/ConfigValue.hpp"
@@ -363,12 +364,28 @@ SP<IFramebuffer> CHyprGLRenderer::blurFramebuffer(CRenderContext& ctx, SP<IFrame
 }
 
 void CHyprGLRenderer::refreshBlurProvider() {
-    static auto PBLURTYPE = CConfigValue<Config::INTEGER>("decoration:blur:variant");
+    static auto       PBLURTYPE     = CConfigValue<Config::INTEGER>("decoration:blur:variant");
+    static auto       PBLURPROVIDER = CConfigValue<std::string>("decoration:blur:provider");
 
-    const auto  type = sc<eBlurType>(*PBLURTYPE);
-    if (m_blur && m_blur->type() == type)
+    const std::string NAME = *PBLURPROVIDER;
+    if (!NAME.empty() && blurProviderRegistry()->has(NAME)) {
+        if (m_blur && m_blurRegisteredName == NAME)
+            return;
+
+        if (auto provider = blurProviderRegistry()->create(NAME)) {
+            m_blur               = std::move(provider);
+            m_blurRegisteredName = NAME;
+            return;
+        }
+
+        LOG(Log::ERR, "Blur provider {} failed to create, falling back to variant", NAME);
+    }
+
+    const auto type = sc<eBlurType>(*PBLURTYPE);
+    if (m_blur && m_blurRegisteredName.empty() && m_blur->type() == type)
         return;
 
+    m_blurRegisteredName.clear();
     m_blur = createBlurProvider(type, *g_pHyprOpenGL);
 }
 

@@ -256,6 +256,11 @@ std::vector<SP<IValue>> Values::getConfigValues() {
                          {"haze", 10},
                      },
                  .refresh = Supplementary::REFRESH_BLUR_FB}),
+        MS<String>(
+            "decoration:blur:provider",
+            "name of a blur provider registered at runtime (e.g. by a plugin). Overrides decoration:blur:variant while that provider is available, falls back to the variant "
+            "otherwise.",
+            STRVAL_EMPTY, {.refresh = Supplementary::REFRESH_BLUR_FB}),
         MS<Int>("decoration:blur:size", "blur size (distance)", 8, {.min = 0, .max = 100, .refresh = Supplementary::REFRESH_BLUR_FB}),
         MS<Int>("decoration:blur:passes", "the amount of passes to perform", 1, {.min = 0, .max = 10, .refresh = Supplementary::REFRESH_BLUR_FB}),
         MS<Bool>("decoration:blur:ignore_opacity", "make the blur layer ignore the opacity of the window", true, {.refresh = Supplementary::REFRESH_BLUR_FB}),

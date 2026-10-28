@@ -11,6 +11,9 @@
 #include "../layout/target/Target.hpp"
 #include "../layout/supplementary/WorkspaceAlgoMatcher.hpp"
 #include "event/EventBus.hpp"
+#include "../render/Renderer.hpp"
+#include "../render/blur/Registry.hpp"
+#include "../config/supplementary/propRefresher/PropRefresher.hpp"
 #include <dlfcn.h>
 #include <filesystem>
 
@@ -454,5 +457,33 @@ APICALL bool HyprlandAPI::removeEvent(HANDLE handle, const std::string& name) {
         return false;
     }
 
+    return true;
+}
+
+APICALL bool HyprlandAPI::registerBlurProvider(HANDLE handle, const std::string& name, std::function<UP<Render::IBlurProvider>()>&& factory) {
+    auto* const PLUGIN = g_pPluginSystem->getPluginByHandle(handle);
+
+    if (!PLUGIN)
+        return false;
+
+    if (!Render::blurProviderRegistry()->registerProvider(handle, name, std::move(factory))) {
+        LOG(Log::ERR, "Plugin {} failed to register blur provider {} (empty name, null factory or name taken)", PLUGIN->m_name, name);
+        return false;
+    }
+
+    g_pPluginSystem->refreshBlurProviders();
+    return true;
+}
+
+APICALL bool HyprlandAPI::unregisterBlurProvider(HANDLE handle, const std::string& name) {
+    auto* const PLUGIN = g_pPluginSystem->getPluginByHandle(handle);
+
+    if (!PLUGIN)
+        return false;
+
+    if (!Render::blurProviderRegistry()->unregisterProvider(handle, name))
+        return false;
+
+    g_pPluginSystem->refreshBlurProviders();
     return true;
 }

@@ -45,6 +45,7 @@ class CPluginSystem {
     std::vector<CPlugin*>  getAllPlugins();
     size_t                 pluginCount();
     void                   sigGetPlugins(CPlugin** data, size_t len);
+    void                   refreshBlurProviders();
 
     bool                   m_allowConfigVars = false;
 

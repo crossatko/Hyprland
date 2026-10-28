@@ -65,7 +65,8 @@ namespace Render::GL {
         SP<ITexture>         getBlurTexture(PHLMONITORREF pMonitor) override;
 
         UP<IElementRenderer> m_elementRenderer;
-        UP<IGLBlurProvider>  m_blur;
+        UP<IBlurProvider>    m_blur;
+        std::string          m_blurRegisteredName; // non-empty if m_blur came from the provider registry
         CHyprSignalListener  m_preRenderListener;
 
         // FULL_FAKE and aborted draws share this backend's EGL command stream.

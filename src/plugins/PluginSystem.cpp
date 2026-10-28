@@ -8,6 +8,9 @@
 #include "../notification/NotificationOverlay.hpp"
 #include "../layout/supplementary/WorkspaceAlgoMatcher.hpp"
 #include "../i18n/Engine.hpp"
+#include "../render/Renderer.hpp"
+#include "../render/blur/Registry.hpp"
+#include "../config/supplementary/propRefresher/PropRefresher.hpp"
 
 CPluginSystem::CPluginSystem() {
     g_pFunctionHookSystem = makeUnique<CHookSystem>();
@@ -155,6 +158,10 @@ void CPluginSystem::unloadPlugin(const CPlugin* plugin, bool eject) {
         Layout::Supplementary::algoMatcher()->unregisterAlgo(l);
     }
 
+    // blur providers run plugin code, so the renderer must drop them before the plugin is unmapped
+    if (Render::blurProviderRegistry()->unregisterAll(plugin->m_handle))
+        refreshBlurProviders();
+
     g_pFunctionHookSystem->removeAllHooksFrom(plugin->m_handle);
 
     const auto rd = plugin->m_registeredDecorations;
@@ -268,4 +275,12 @@ void CPluginSystem::sigGetPlugins(CPlugin** data, size_t len) {
     for (size_t i = 0; i < std::min(m_loadedPlugins.size(), len); i++) {
         data[i] = m_loadedPlugins[i].get();
     }
+}
+
+void CPluginSystem::refreshBlurProviders() {
+    // synchronous: a provider whose plugin is about to be unmapped must not outlive this call
+    if (g_pHyprRenderer)
+        g_pHyprRenderer->refreshBlurProvider();
+
+    Config::Supplementary::refresher()->scheduleRefresh(Config::Supplementary::REFRESH_BLUR_FB);
 }
