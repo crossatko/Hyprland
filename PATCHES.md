@@ -1,6 +1,6 @@
 # Fork patch series
 
-This branch is upstream `hyprwm/Hyprland` main plus the commits below, in this order. It is rebased onto upstream main every
+This branch is upstream `hyprwm/Hyprland` (currently tag v0.57.0, branch `glass-v0.57.0`) plus the commits below, in this order. It is rebased onto upstream main every
 release (`scripts/rebase-fork.sh`, which also builds and runs the tests). Rules for every patch: one feature per commit
 with its tests, new code in fork-owned files, upstream files only get small additive hunks, every new option is optional
 and probe-able so a config written for the fork still loads on stock Hyprland.
